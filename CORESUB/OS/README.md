@@ -53,7 +53,7 @@ According to the functionality that operating Systems provides the types are:
  
 - **Multitasking**: It is a system that allows more efficient use of computer hardware. This system works on more than one task at one time by rapidly switching between various tasks. These systems are also known as time-sharing systems.
 
-<img src="/assets/images/M-OS.png" width="400" height="200">
+<img src="assets/images/M-OS.png" width="400" height="200">
 
 - **Multiprocessing**: It is a system that allows multiple or various processors in a computer to process two or more different portions of the same program simultaneously. It is used to complete more work in a shorter period of time. 
 
