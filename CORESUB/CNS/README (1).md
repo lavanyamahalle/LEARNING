@@ -187,9 +187,6 @@ It is a compressed version of the OSI model with only 4 layers. It stands for Tr
 
 ### Thanks for Reading 
 
-<img src="/assets/images/save.png" width="600" height="200">
-
----
 
 ###
 
