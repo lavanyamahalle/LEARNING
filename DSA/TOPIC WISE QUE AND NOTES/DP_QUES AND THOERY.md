@@ -650,3 +650,174 @@ This combines **counting + DP with min/max**
 
 ---
 
+
+
+
+Awesome! Let’s go through the **Knapsack Problem** step-by-step — it’s one of the most fundamental problems in **Dynamic Programming** and commonly asked in interviews.
+
+---
+
+# 🎒 0/1 Knapsack Problem
+
+---
+
+## 🔷 Problem Statement
+
+> Given `n` items, each with a **weight** `wt[i]` and a **value** `val[i]`, and a knapsack with maximum capacity `W`.
+> Select items such that:
+
+* The **total weight** does not exceed `W`
+* The **total value** is **maximized**
+* You **can’t split** items (0/1 choice: either take or don’t take each item)
+
+---
+
+## 🔶 Input Example
+
+```cpp
+val[] = {60, 100, 120}
+wt[]  = {10, 20, 30}
+W = 50
+```
+
+### 🔹 Output:
+
+```cpp
+Max value = 220  // items 1 (wt=20) and 2 (wt=30)
+```
+
+---
+
+## 🔷 Types of Approaches
+
+| Method                | Time Complexity | Space Complexity |
+| --------------------- | --------------- | ---------------- |
+| 1. Recursion          | O(2^n)          | O(n)             |
+| 2. Memoization        | O(n × W)        | O(n × W)         |
+| 3. Tabulation         | O(n × W)        | O(n × W)         |
+| 4. Space-Optimized DP | O(n × W)        | O(W)             |
+
+---
+
+# ✅ 1. Recursion (Brute Force)
+
+### 🔹 Code:
+
+```cpp
+int knapsackRec(int wt[], int val[], int n, int W) {
+    if (n == 0 || W == 0)
+        return 0;
+    
+    // If current item > capacity → can't include
+    if (wt[n-1] > W)
+        return knapsackRec(wt, val, n-1, W);
+
+    // Include or Exclude the item
+    int include = val[n-1] + knapsackRec(wt, val, n-1, W - wt[n-1]);
+    int exclude = knapsackRec(wt, val, n-1, W);
+
+    return max(include, exclude);
+}
+```
+
+### 🔹 Explanation:
+
+* Every item has two choices: **include** or **exclude**
+* Try all combinations → exponential time
+
+---
+
+# ✅ 2. Memoization (Top-Down DP)
+
+### 🔹 Code:
+
+```cpp
+int knapsackMemo(int wt[], int val[], int n, int W, vector<vector<int>> &dp) {
+    if (n == 0 || W == 0) return 0;
+
+    if (dp[n][W] != -1) return dp[n][W];
+
+    if (wt[n-1] > W)
+        return dp[n][W] = knapsackMemo(wt, val, n-1, W, dp);
+
+    int include = val[n-1] + knapsackMemo(wt, val, n-1, W - wt[n-1], dp);
+    int exclude = knapsackMemo(wt, val, n-1, W, dp);
+
+    return dp[n][W] = max(include, exclude);
+}
+
+// Usage
+int main() {
+    int wt[] = {10, 20, 30};
+    int val[] = {60, 100, 120};
+    int n = 3, W = 50;
+    vector<vector<int>> dp(n+1, vector<int>(W+1, -1));
+    cout << knapsackMemo(wt, val, n, W, dp);
+}
+```
+
+---
+
+# ✅ 3. Tabulation (Bottom-Up DP)
+
+### 🔹 Code:
+
+```cpp
+int knapsackTabu(int wt[], int val[], int n, int W) {
+    vector<vector<int>> dp(n+1, vector<int>(W+1, 0));
+
+    for (int i = 1; i <= n; i++) {
+        for (int w = 0; w <= W; w++) {
+            if (wt[i-1] <= w)
+                dp[i][w] = max(val[i-1] + dp[i-1][w - wt[i-1]], dp[i-1][w]);
+            else
+                dp[i][w] = dp[i-1][w];
+        }
+    }
+    return dp[n][W];
+}
+```
+
+### 🔹 Dry Run for Example:
+
+| Item → / Capacity ↓ | 0 | 10 | 20  | 30  | 40  | 50  |
+| ------------------- | - | -- | --- | --- | --- | --- |
+| No item (0)         | 0 | 0  | 0   | 0   | 0   | 0   |
+| Item 1 (wt=10)      | 0 | 60 | 60  | 60  | 60  | 60  |
+| Item 2 (wt=20)      | 0 | 60 | 100 | 160 | 160 | 160 |
+| Item 3 (wt=30)      | 0 | 60 | 100 | 160 | 180 | 220 |
+
+---
+
+# ✅ 4. Space Optimized DP
+
+```cpp
+int knapsackOpt(int wt[], int val[], int n, int W) {
+    vector<int> prev(W+1, 0);
+
+    for (int i = 0; i < n; i++) {
+        for (int w = W; w >= 0; w--) {
+            if (wt[i] <= w)
+                prev[w] = max(prev[w], val[i] + prev[w - wt[i]]);
+        }
+    }
+    return prev[W];
+}
+```
+
+* Uses only a 1D array
+* Traverse weights **backward** to avoid overwriting needed values
+
+---
+
+# 📘 Summary of Key Concepts
+
+| Term               | Meaning                                                                        |
+| ------------------ | ------------------------------------------------------------------------------ |
+| 0/1 Knapsack       | Can take each item only once (0 or 1 times)                                    |
+| Capacity W         | Maximum weight allowed                                                         |
+| val\[], wt\[]      | Arrays of values and weights of items                                          |
+| DP State           | `dp[i][w]` = max value using first `i` items and capacity `w`                  |
+| Transition Formula | If `wt[i-1] <= w`: `dp[i][w] = max(val[i-1] + dp[i-1][w-wt[i-1]], dp[i-1][w])` |
+
+---
