@@ -372,3 +372,205 @@ class Car {
 * Code becomes more **secure, modular, and extensible**
 * Essential for **enterprise apps** like Uber, Ola, YouTube, etc.
 
+
+
+-------------
+
+# 🧠 UML Diagrams: 
+
+### ✅ What is UML?
+
+**UML (Unified Modeling Language)** is a standard way to visualize the **design and structure of a system**.
+
+* Used in **system analysis**, **design**, and **documentation**
+* Helps teams understand system **architecture**, **data flow**, and **interactions**
+
+---
+
+## 🏛 1. **Structural Diagrams** (Static)
+
+These represent the **static structure** of a system: **classes, objects, relationships**, etc.
+
+### 🔸 1.1 **Class Diagram**
+
+Shows the **classes** in a system and their **attributes, methods**, and **relationships**.
+
+#### ✅ Class Structure Format:
+
+```text
+  +-----------------------------+
+  |         <<abstract>>       |   <- (optional) stereotype
+  |         ClassName          |   <- (Class name)
+  +-----------------------------+
+  | - privateVar: Type         |   <- Attributes
+  | + publicVar: Type          |
+  | # protectedVar: Type       |
+  +-----------------------------+
+  | + publicMethod(): Return   |   <- Methods
+  | - privateMethod(): Return  |
+  +-----------------------------+
+```
+
+**Access Modifiers:**
+
+| Symbol | Meaning   |
+| ------ | --------- |
+| `+`    | Public    |
+| `-`    | Private   |
+| `#`    | Protected |
+
+---
+
+### 🔸 1.2 **Class Relationships** (Association)
+
+#### 1. **Inheritance** ("Is-a")
+
+* Used when one class **extends** another
+* Represented with a **hollow arrow (`--|>`)**
+* **Code Example**:
+
+```cpp
+class Animal {
+  void speak();
+}
+class Dog extends Animal {
+  void bark();
+}
+```
+
+```text
+Animal
+  ^
+  -
+  |
+Dog
+```
+
+---
+
+#### 2. **Object Association** ("Has-a")
+
+##### a. **Simple Association**
+
+* Two classes **interact** or **refer to** each other
+* Represented with a **plain arrow (`-->`)**
+* **Example**: Arjun lives in House
+
+```cpp
+class Arjun {
+  House* home;
+};
+```
+
+```text
+Arjun --> House
+```
+
+---
+
+##### b. **Aggregation**
+
+* A **container-part** relationship
+* Part **can exist independently**
+* Represented with **hollow diamond (`o--`)**
+
+**Example**:
+Room contains Bed, Chair, Sofa – but these can exist separately.
+
+```cpp
+class Room {
+  Chair chair;
+};
+```
+
+```text
+Room <>-- Chair
+```
+
+---
+
+##### c. **Composition**
+
+* **Strongest** "has-a" relationship
+* Part **cannot exist without** the whole
+* Represented with a **filled diamond (`◆--`)**
+
+**Example**: Chair has Seat, Arms, Wheels – they don't exist independently.
+
+```cpp
+class Seat { };
+class Arms { };
+class Chair {
+  private:
+    Seat s;
+    Arms a;
+};
+```
+
+```text
+Chair ◆-- Seat  
+Chair ◆-- Arms
+```
+
+➡️ **Used heavily in LLD** (Low Level Design)
+
+---
+
+## 🔄 2. **Dynamic Diagrams** (Behavioral)
+
+### 🔹 2.1 **Sequence Diagram**
+
+Shows **how objects interact over time** via **message passing**.
+
+#### ✅ Components:
+
+* **Objects** → Horizontal row
+* **Lifeline** → Dashed vertical line
+* **Messages** → Solid arrows
+* **Activation bar** → Thin vertical rectangle (when a method is active)
+
+---
+
+### 🔄 Example: `User → ATM → Bank`
+
+```text
+User        ATM        BankServer
+ |           |              |
+ |---------> |              |   insertCard()
+ |           |              |
+ |           |----------->  |   verifyPIN()
+ |           |<-----------  |
+ |<----------|              |
+```
+
+### ⌨️ Code to match:
+
+```cpp
+User.atm.insertCard();
+ATM.verifyPIN() -> BankServer;
+```
+
+---
+
+# ✅ Summary Table
+
+| Diagram Type      | Use Case                      | Example                      | Representation    |     |
+| ----------------- | ----------------------------- | ---------------------------- | ----------------- | --- |
+| **Class Diagram** | Structure of system           | Class + attributes + methods | Rectangle + lines |     |
+| Inheritance       | Is-a relationship             | Dog inherits Animal          | \`--              | >\` |
+| Association       | Weak relationship             | Arjun lives in House         | `-->`             |     |
+| Aggregation       | Container-part (independent)  | Room has Chair               | `o--`             |     |
+| Composition       | Container-part (dependent)    | Chair has Seat               | `◆--`             |     |
+| Sequence Diagram  | Object interactions over time | User using ATM               | Message Arrows    |     |
+
+---
+
+## 💬 Pro Tips for Interviews:
+
+* Use **Composition over Inheritance** in most cases
+* **Class Diagrams** help in LLD questions (like designing Uber, Zomato)
+* **Sequence Diagrams** help explain API flow and backend service calls
+* Practice with **PlantUML**, draw diagrams on paper or tools like Lucidchart
+
+---
+
