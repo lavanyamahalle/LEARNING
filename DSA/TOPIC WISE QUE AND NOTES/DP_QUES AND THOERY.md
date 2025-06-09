@@ -720,7 +720,7 @@ int knapsackRec(int wt[], int val[], int n, int W) {
     return max(include, exclude);
 }
 ```
-<img src="deltaasset/Screenshot (1753).png" width="600" height="200">
+<img src="deltaasset/Screenshot (1753).png" width="900" height="400">
 ### 🔹 Explanation:
 
 * Every item has two choices: **include** or **exclude**
