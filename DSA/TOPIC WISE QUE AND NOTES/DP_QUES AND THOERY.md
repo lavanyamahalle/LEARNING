@@ -700,7 +700,7 @@ Max value = 220  // items 1 (wt=20) and 2 (wt=30)
 ---
 
 # ✅ 1. Recursion (Brute Force)
-<img src="deltaasset/Screenshot (1752).png" width="600" height="200">
+<img src="deltaasset/Screenshot (1752).png" width="1100" height="400">
 
 ### 🔹 Code:
 
@@ -729,7 +729,9 @@ int knapsackRec(int wt[], int val[], int n, int W) {
 ---
 
 # ✅ 2. Memoization (Top-Down DP)
-
+<img src="deltaasset/Screenshot (1755).png" width="1100" height="400">
+<img src="deltaasset/Screenshot (1756).png" width="1100" height="400">
+<img src="deltaasset/Screenshot (1757).png" width="1100" height="400">
 ### 🔹 Code:
 
 ```cpp
@@ -756,7 +758,9 @@ int main() {
     cout << knapsackMemo(wt, val, n, W, dp);
 }
 ```
-
+<img src="deltaasset/Screenshot (1759).png" width="1100" height="400">
+<img src="deltaasset/Screenshot (1754).png" width="1100" height="400">
+<img src="deltaasset/Screenshot (1758).png" width="1100" height="400">
 ---
 
 # ✅ 3. Tabulation (Bottom-Up DP)
