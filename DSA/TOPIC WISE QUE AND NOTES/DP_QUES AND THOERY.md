@@ -700,6 +700,7 @@ Max value = 220  // items 1 (wt=20) and 2 (wt=30)
 ---
 
 # ✅ 1. Recursion (Brute Force)
+<img src="deltaasset/Screenshot (1752).png" width="600" height="200">
 
 ### 🔹 Code:
 
@@ -719,7 +720,7 @@ int knapsackRec(int wt[], int val[], int n, int W) {
     return max(include, exclude);
 }
 ```
-
+<img src="deltaasset/Screenshot (1753).png" width="600" height="200">
 ### 🔹 Explanation:
 
 * Every item has two choices: **include** or **exclude**
