@@ -1,7 +1,7 @@
 
 ---
 
-## ✅ Repeated SQL Questions
+## ✅ Repeated SQL Questions 
 
 ---
 | SQL Query       | Query Description                                                   | Example                                                                                                  |
