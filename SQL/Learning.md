@@ -4,8 +4,7 @@ ROADMAP : https://whimsical.com/database-management-5UrHgo4JpWyzseKB4zypDy
 Leetcode : https://leetcode.com/studyplan/top-sql-50/
 
 --- 
-### --------------------------------  Introduction --------------------------------------  
---- 
+# ** INTRODUCTION **
 ## ✅ **What is a Database?**
 
 An **ordered collection of data** that is stored and accessed electronically from a computing system.
