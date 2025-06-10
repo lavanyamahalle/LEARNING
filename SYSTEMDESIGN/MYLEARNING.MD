@@ -517,126 +517,201 @@ Chair ◆-- Arms
 ---
 
 
-
-## 🔄 2. **Dynamic Diagrams** (Behavioral)
-
-Here's a **clean, beginner-friendly sequence diagram example** with full explanation of each UML component you asked for — using a real-world scenario: ✅ **User Login System**
+Here is a **detailed and structured explanation** of **UML Sequence Diagrams**, including every component with **clear meaning**, **visuals**, **sync/async message types**, and **real examples**.
 
 ---
 
-## 🔐 Example: **User Login (username, password)**
+# 🔄 2. **Dynamic Diagrams (Behavioral)**
+
+## 🔹 2.1 **Sequence Diagram**
+
+A **sequence diagram** models the **flow of logic** in a system **over time**.
+It captures **how objects interact** through **method calls (messages)** in a specific **time order**.
 
 ---
 
-### ✅ **Objects (Horizontal Row)**
+## ✅ **Main Components of a Sequence Diagram**
+
+### 1. **Objects (Actors or Instances)**
+
+* Represented as **boxes at the top**
+* These are **instances** of classes
+* Can be **users, APIs, classes**, etc.
 
 ```text
-+--------+     +-------------+     +-------------+  
-|  User  |     |  Frontend   |     |   Backend   |  
-+--------+     +-------------+     +-------------+
-```
-
-These are the **participants** (objects/classes) in the interaction.
-
----
-
-### 🧵 **Lifelines (Dashed vertical line)**
-
-Lifelines represent the **existence and activity** of an object **during the interaction**.
-
-```text
-User         Frontend           Backend
- |              |                   |
- |              |                   |
- |              |                   |
-```
-
-Each `|` below an object is its **lifeline**. It begins at the top and continues down, indicating the object is **alive and may interact**.
-
----
-
-### 💬 **Messages (Solid arrows)**
-
-#### 🔹 Synchronous Call (`→`)
-
-* **User → Frontend**: `enterCredentials(username, password)`
-* **Frontend → Backend**: `verifyLogin(username, password)`
-* These are **blocking calls** (caller waits).
-
-#### 🔹 Asynchronous Call (`↝`)
-
-* Can be used for non-blocking (e.g., log to analytics):
-
-```text
-Backend ↝ Logger: logLoginAttempt()
-```
-
-#### 🔹 Return Message (`--->`)
-
-* Dashed arrow, returns result like:
-
-```text
-Backend ---> Frontend: loginStatus
++--------+     +--------+     +------------+
+|  User  |     |  ATM   |     | BankServer |
++--------+     +--------+     +------------+
 ```
 
 ---
 
-### 📊 **Activation Bar (Thin vertical rectangle)**
+### 2. **Lifeline**
 
-Represents **when the object is actively executing a method**.
-
-#### Diagram Snippet:
+* Represented by a **dashed vertical line** below each object
+* **Represents the life** of the object during the interaction
+* Shows **when** and **how long** the object is **involved**
+* **Starts** when the diagram begins and **ends** when the object is no longer active or is destroyed
 
 ```text
-User        Frontend           Backend
- |             |                   |
- | ----------> |                   | enterCredentials()
- |             | ┌──────────────┐  |
- |             | │   Processing │  |
- |             | └──────┬───────┘  |
- |             |        ▼          |
- |             | --------------->  | verifyLogin()
- |             |                  ┌─────────────┐
- |             |                  │ Processing  │
- |             |                  └─────────────┘
- |             | <---------------  | return "Success"
- | <---------- |                   |
+User        ATM         BankServer
+ |           |              |
+ |           |              |
+ |           |              |
 ```
 
-* Each `┌────┐` block is an **activation bar**
-* **Starts when method is called**
-* **Ends when method returns**
+Each `|` below the object is a **lifeline**.
 
 ---
 
-## 🖼️ Full Summary Table
+### 3. **Messages (Solid Arrows)**
 
-| Component           | Symbol/Look         | Meaning                    |                                      |
-| ------------------- | ------------------- | -------------------------- | ------------------------------------ |
-| **Object**          | Box on top          | Participant in interaction |                                      |
-| **Lifeline**        | Dashed vertical \`  | \`                         | Object’s lifetime during interaction |
-| **Synchronous Msg** | Solid arrow `→`     | Blocking method call       |                                      |
-| **Async Msg**       | Open arrow `↝`      | Non-blocking call          |                                      |
-| **Return Msg**      | Dashed arrow `--->` | Return value or result     |                                      |
-| **Activation Bar**  | Thin rectangle `│`  | Method is active/executing |                                      |
+Messages show **calls or data transfer** between objects.
+
+#### 🔹 Types of Messages:
+
+| Type             | Symbol              | Meaning                              |
+| ---------------- | ------------------- | ------------------------------------ |
+| **Synchronous**  | Solid arrowhead `→` | Caller waits for response (blocking) |
+| **Asynchronous** | Open arrowhead `↝`  | Caller continues without waiting     |
+| **Return**       | Dotted line `--->`  | Response after sync call             |
 
 ---
 
-### ✅ Real Code Mapping (C++ Style)
+#### ✅ Visual Representation:
+
+```text
+User       ATM           Bank
+ |           |              |
+ | --------> |              | insertCard()
+ |           |              |
+ |           | -------->    | verifyPIN()
+ |           | <--------    | true/false
+ | <-------- |              | result to user
+```
+
+* `→` = **sync call**
+* `↝` = **async call**
+* `--->` = **return message**
+
+---
+
+### 4. **Activation Bar**
+
+* A **thin vertical rectangle** on lifeline
+* Represents the **time duration a method is active/executing**
+* Appears when an object **receives a message**
+* Ends when the method completes
+
+```text
+     +----------+
+User |          |
+     |          |
+     +----------+           +----------+
+              → |           |          |
+                | ATM       |          |
+                +---------->+ Bank     |
+                             |          |
+                             +----------+
+```
+
+---
+
+## 🧪 Real-World Example: ATM Transaction
+
+```text
+User        ATM        BankServer
+ |           |              |
+ | --------> |              |  insertCard()
+ |           |              |
+ |           | -------->    |  verifyPIN()
+ |           | <--------    |  return result
+ | <-------- |              |  show message
+```
+
+* All arrows `→` are **synchronous**
+* Messages flow **top to bottom** in time
+
+---
+
+### 🔁 Optional Elements
+
+#### a. **Asynchronous Calls**:
+
+```text
+App        Worker
+ |  ↝       |       processRequest() – async
+ |          |
+```
+
+Used in **event-driven systems**, like sending an email or logging.
+
+---
+
+#### b. **Return Message**:
+
+```text
+ATM         BankServer
+ | -------->|
+ |<-------- |  (returns boolean PIN check)
+```
+
+---
+
+#### c. **Create and Destroy Object**:
+
+* Creation:
+
+```text
+User → new ATM()
+```
+
+* Destruction:
+
+```text
+ATM x------> (object destroyed)
+```
+
+---
+
+## 🧠 Summary Table
+
+| Component          | Symbol         | Description                       |                                 |
+| ------------------ | -------------- | --------------------------------- | ------------------------------- |
+| **Object**         | Box on top     | Participant in sequence           |                                 |
+| **Lifeline**       | Dashed line \` | \`                                | Shows object's life in sequence |
+| **Sync Message**   | Arrow `→`      | Caller waits for method to return |                                 |
+| **Async Message**  | Open arrow `↝` | Caller continues without waiting  |                                 |
+| **Return Msg**     | Dashed `--->`  | Shows return value or status      |                                 |
+| **Activation Bar** | Rect bar       | Object's method is running        |                                 |
+
+---
+
+## ✅ Code Correspondence (C++ Style):
 
 ```cpp
-class Backend {
+class ATM {
 public:
-  bool verifyLogin(string user, string pass) {
-    // Logic here
+  bool verifyPIN(int pin) {
+    // logic
     return true;
   }
 };
 
 int main() {
-  Backend backend;
-  bool status = backend.verifyLogin("lavanya", "1234");
+  ATM atm;
+  bool result = atm.verifyPIN(1234);
 }
 ```
 
+Corresponding Sequence:
+
+```
+Main → ATM: verifyPIN(1234)
+ATM → Main: true
+```
+
 ---
+
+
+<img src="deltaasset2/Screenshot 2025-06-10 214040.png" width="1100" height="400">
