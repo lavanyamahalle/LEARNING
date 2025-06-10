@@ -1,5 +1,6 @@
-uploading answers in few days... 
+## uploading answers in few days... 
 
+Commonly repeated questions : 
 
 1. What are the different types of databases?
 2. What is the difference between `DBMS` and `RDBMS`?
