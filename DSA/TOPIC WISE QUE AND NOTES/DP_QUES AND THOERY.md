@@ -826,3 +826,12 @@ int knapsackOpt(int wt[], int val[], int n, int W) {
 | Transition Formula | If `wt[i-1] <= w`: `dp[i][w] = max(val[i-1] + dp[i-1][w-wt[i-1]], dp[i-1][w])` |
 
 ---
+
+
+<img src="deltaasset/Screenshot (1761).png" width="1100" height="400">
+<img src="deltaasset/Screenshot (1762).png" width="1100" height="400">
+<img src="deltaasset/Screenshot (1763).png" width="1100" height="400">
+<img src="deltaasset/Screenshot (1764).png" width="1100" height="400">
+<img src="deltaasset/Screenshot (1765).png" width="1100" height="400">
+<img src="deltaasset/Screenshot (1766).png" width="1100" height="400">
+<img src="deltaasset/Screenshot (1767).png" width="1100" height="400">

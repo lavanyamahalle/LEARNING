@@ -372,3 +372,346 @@ class Car {
 * Code becomes more **secure, modular, and extensible**
 * Essential for **enterprise apps** like Uber, Ola, YouTube, etc.
 
+
+
+-------------
+
+# 🧠 UML Diagrams: 
+
+### ✅ What is UML?
+
+**UML (Unified Modeling Language)** is a standard way to visualize the **design and structure of a system**.
+
+* Used in **system analysis**, **design**, and **documentation**
+* Helps teams understand system **architecture**, **data flow**, and **interactions**
+
+---
+
+## 🏛 1. **Structural Diagrams** (Static)
+
+These represent the **static structure** of a system: **classes, objects, relationships**, etc.
+
+### 🔸 1.1 **Class Diagram**
+
+Shows the **classes** in a system and their **attributes, methods**, and **relationships**.
+
+#### ✅ Class Structure Format:
+
+```text
+  +-----------------------------+
+  |         <<abstract>>       |   <- (optional) stereotype
+  |         ClassName          |   <- (Class name)
+  +-----------------------------+
+  | - privateVar: Type         |   <- Attributes
+  | + publicVar: Type          |
+  | # protectedVar: Type       |
+  +-----------------------------+
+  | + publicMethod(): Return   |   <- Methods
+  | - privateMethod(): Return  |
+  +-----------------------------+
+```
+
+**Access Modifiers:**
+
+| Symbol | Meaning   |
+| ------ | --------- |
+| `+`    | Public    |
+| `-`    | Private   |
+| `#`    | Protected |
+
+---
+
+### 🔸 1.2 **Class Relationships** (Association)
+
+#### 1. **Inheritance** ("Is-a")
+
+* Used when one class **extends** another
+* Represented with a **hollow arrow (`--|>`)**
+* **Code Example**:
+
+```cpp
+class Animal {
+  void speak();
+}
+class Dog extends Animal {
+  void bark();
+}
+```
+
+```text
+Animal
+  ^
+  -
+  |
+Dog
+```
+
+---
+
+#### 2. **Object Association** ("Has-a")
+
+##### a. **Simple Association**
+
+* Two classes **interact** or **refer to** each other
+* Represented with a **plain arrow (`-->`)**
+* **Example**: Arjun lives in House
+
+```cpp
+class Arjun {
+  House* home;
+};
+```
+
+```text
+Arjun --> House
+```
+
+---
+
+##### b. **Aggregation**
+
+* A **container-part** relationship
+* Part **can exist independently**
+* Represented with **hollow diamond (`o--`)**
+
+**Example**:
+Room contains Bed, Chair, Sofa – but these can exist separately.
+
+```cpp
+class Room {
+  Chair chair;
+};
+```
+
+```text
+Room <>-- Chair
+```
+
+---
+
+##### c. **Composition**
+
+* **Strongest** "has-a" relationship
+* Part **cannot exist without** the whole
+* Represented with a **filled diamond (`◆--`)**
+
+**Example**: Chair has Seat, Arms, Wheels – they don't exist independently.
+
+```cpp
+class Seat { };
+class Arms { };
+class Chair {
+  private:
+    Seat s;
+    Arms a;
+};
+```
+
+```text
+Chair ◆-- Seat  
+Chair ◆-- Arms
+```
+
+➡️ **Used heavily in LLD** (Low Level Design)
+
+---
+
+
+Here is a **detailed and structured explanation** of **UML Sequence Diagrams**, including every component with **clear meaning**, **visuals**, **sync/async message types**, and **real examples**.
+
+---
+
+# 🔄 2. **Dynamic Diagrams (Behavioral)**
+
+## 🔹 2.1 **Sequence Diagram**
+
+A **sequence diagram** models the **flow of logic** in a system **over time**.
+It captures **how objects interact** through **method calls (messages)** in a specific **time order**.
+
+---
+
+## ✅ **Main Components of a Sequence Diagram**
+
+### 1. **Objects (Actors or Instances)**
+
+* Represented as **boxes at the top**
+* These are **instances** of classes
+* Can be **users, APIs, classes**, etc.
+
+```text
++--------+     +--------+     +------------+
+|  User  |     |  ATM   |     | BankServer |
++--------+     +--------+     +------------+
+```
+
+---
+
+### 2. **Lifeline**
+
+* Represented by a **dashed vertical line** below each object
+* **Represents the life** of the object during the interaction
+* Shows **when** and **how long** the object is **involved**
+* **Starts** when the diagram begins and **ends** when the object is no longer active or is destroyed
+
+```text
+User        ATM         BankServer
+ |           |              |
+ |           |              |
+ |           |              |
+```
+
+Each `|` below the object is a **lifeline**.
+
+---
+
+### 3. **Messages (Solid Arrows)**
+
+Messages show **calls or data transfer** between objects.
+
+#### 🔹 Types of Messages:
+
+| Type             | Symbol              | Meaning                              |
+| ---------------- | ------------------- | ------------------------------------ |
+| **Synchronous**  | Solid arrowhead `→` | Caller waits for response (blocking) |
+| **Asynchronous** | Open arrowhead `↝`  | Caller continues without waiting     |
+| **Return**       | Dotted line `--->`  | Response after sync call             |
+
+---
+
+#### ✅ Visual Representation:
+
+```text
+User       ATM           Bank
+ |           |              |
+ | --------> |              | insertCard()
+ |           |              |
+ |           | -------->    | verifyPIN()
+ |           | <--------    | true/false
+ | <-------- |              | result to user
+```
+
+* `→` = **sync call**
+* `↝` = **async call**
+* `--->` = **return message**
+
+---
+
+### 4. **Activation Bar**
+
+* A **thin vertical rectangle** on lifeline
+* Represents the **time duration a method is active/executing**
+* Appears when an object **receives a message**
+* Ends when the method completes
+
+```text
+     +----------+
+User |          |
+     |          |
+     +----------+           +----------+
+              → |           |          |
+                | ATM       |          |
+                +---------->+ Bank     |
+                             |          |
+                             +----------+
+```
+
+---
+
+## 🧪 Real-World Example: ATM Transaction
+
+```text
+User        ATM        BankServer
+ |           |              |
+ | --------> |              |  insertCard()
+ |           |              |
+ |           | -------->    |  verifyPIN()
+ |           | <--------    |  return result
+ | <-------- |              |  show message
+```
+
+* All arrows `→` are **synchronous**
+* Messages flow **top to bottom** in time
+
+---
+
+### 🔁 Optional Elements
+
+#### a. **Asynchronous Calls**:
+
+```text
+App        Worker
+ |  ↝       |       processRequest() – async
+ |          |
+```
+
+Used in **event-driven systems**, like sending an email or logging.
+
+---
+
+#### b. **Return Message**:
+
+```text
+ATM         BankServer
+ | -------->|
+ |<-------- |  (returns boolean PIN check)
+```
+
+---
+
+#### c. **Create and Destroy Object**:
+
+* Creation:
+
+```text
+User → new ATM()
+```
+
+* Destruction:
+
+```text
+ATM x------> (object destroyed)
+```
+
+---
+
+## 🧠 Summary Table
+
+| Component          | Symbol         | Description                       |                                 |
+| ------------------ | -------------- | --------------------------------- | ------------------------------- |
+| **Object**         | Box on top     | Participant in sequence           |                                 |
+| **Lifeline**       | Dashed line \` | \`                                | Shows object's life in sequence |
+| **Sync Message**   | Arrow `→`      | Caller waits for method to return |                                 |
+| **Async Message**  | Open arrow `↝` | Caller continues without waiting  |                                 |
+| **Return Msg**     | Dashed `--->`  | Shows return value or status      |                                 |
+| **Activation Bar** | Rect bar       | Object's method is running        |                                 |
+
+---
+
+## ✅ Code Correspondence (C++ Style):
+
+```cpp
+class ATM {
+public:
+  bool verifyPIN(int pin) {
+    // logic
+    return true;
+  }
+};
+
+int main() {
+  ATM atm;
+  bool result = atm.verifyPIN(1234);
+}
+```
+
+Corresponding Sequence:
+
+```
+Main → ATM: verifyPIN(1234)
+ATM → Main: true
+```
+
+---
+
+
+<img src="deltaasset2/Screenshot 2025-06-10 214040.png" width="1100" height="400">
