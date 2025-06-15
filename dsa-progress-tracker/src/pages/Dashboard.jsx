@@ -31,7 +31,7 @@ export default function Dashboard() {
     <div className="container mx-auto px-4 py-8">
       <div className="flex justify-between items-center mb-8">
         <h1 className="text-3xl font-bold text-gray-900 dark:text-white">
-          Welcome, {currentUser?.displayName || 'User'}!
+          Welcome, {currentUser?.displayName || 'Learner'}!
         </h1>
         <button
           onClick={handleLogout}
@@ -45,7 +45,7 @@ export default function Dashboard() {
       
       <div className="mt-8">
         <h2 className="text-2xl font-semibold text-gray-900 dark:text-white mb-4">
-          Topic-wise Progress
+          Your Learning Progress by Topic
         </h2>
         <div className="space-y-6">
           {dsaProblems.map((topic) => (

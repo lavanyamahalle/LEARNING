@@ -67,9 +67,9 @@ const ProfileInfo = () => {
 
   return (
     <div className="card p-6 max-w-xl mx-auto mb-8">
-      <h2 className="text-2xl font-bold text-gray-900 dark:text-white mb-4">About Me</h2>
-      <p className="text-gray-600 dark:text-gray-300 mb-4">{profile.about || 'No info provided.'}</p>
-      <h3 className="text-xl font-semibold text-gray-900 dark:text-white mb-2">Skills</h3>
+      <h2 className="text-2xl font-bold text-gray-900 dark:text-white mb-4">About My Learning Journey</h2>
+      <p className="text-gray-600 dark:text-gray-300 mb-4">{profile.about || 'Share your learning goals, interests, or background.'}</p>
+      <h3 className="text-xl font-semibold text-gray-900 dark:text-white mb-2">Skills & Focus Areas</h3>
       <div className="flex flex-wrap gap-2 mb-4">
         {(profile.skills || '').split(',').filter(Boolean).map(skill => (
           <span key={skill.trim()} className="px-3 py-1 bg-primary-100 text-primary-800 dark:bg-primary-900 dark:text-primary-200 rounded-full text-sm">{skill.trim()}</span>
