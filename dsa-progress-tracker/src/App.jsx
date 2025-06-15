@@ -22,7 +22,7 @@ const App = () => {
             <div className="container mx-auto px-4">
               <div className="flex justify-between items-center h-16">
                 <Link to="/" className="text-xl font-bold text-primary-600 dark:text-primary-400">
-                  DSA Progress Tracker
+                 TOP 100 DSA Problems
                 </Link>
                 <div className="flex space-x-4">
                   <Link
