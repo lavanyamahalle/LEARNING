@@ -473,3 +473,26 @@ npm install firebase @firebase/auth @firebase/firestore
 The issue is that in your Dashboard.jsx (in src/pages/), you are passing the entire topic object to the TopicProgress component as the topic prop, instead of just the topic name (string). However, TopicProgress expects a problems prop as well, which is missing.
 
 You should update the Dashboard.jsx file to pass both topic={topic.topic} and problems={topic.problems} to TopicProgress. This will ensure the questions are visible.
+
+
+
+
+our app stores user profile information in Firebase Firestore as follows:
+
+When a user signs up, a document is created in the users collection with their UID as the document ID. This document contains fields like displayName, email, and createdAt.
+When a user updates their profile (About Me, Skills, Education), these fields are merged into the same document in the users collection.
+Example Firestore structure:
+
+users (collection)
+  |
+  |-- <user-uid> (document)
+        |-- displayName: "User Name"
+        |-- email: "user@email.com"
+        |-- createdAt: "2025-06-15T12:34:56.789Z"
+        |-- about: "About me text"
+        |-- skills: "JavaScript, React, DSA"
+        |-- education: "B.Tech in Computer Science"
+
+The code uses Firestore functions like setDoc and getDoc to write and read this data.
+All profile data is private to each user, keyed by their unique Firebase Auth UID.
+If you want to see or modify how this is done, check the logic in Signup.jsx (for initial creation) and ProfileForm.jsx (for updates). Let me know if you want to see the exact code or need help with Firestore rules!

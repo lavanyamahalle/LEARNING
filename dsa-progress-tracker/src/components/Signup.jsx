@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { auth, db } from '../firebase/config';
-import { createUserWithEmailAndPassword } from 'firebase/auth';
+import { createUserWithEmailAndPassword, updateProfile } from 'firebase/auth';
 import { doc, setDoc } from 'firebase/firestore';
 import { useNavigate } from 'react-router-dom';
 
@@ -8,6 +8,9 @@ export default function Signup() {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [displayName, setDisplayName] = useState('');
+  const [about, setAbout] = useState('');
+  const [skills, setSkills] = useState('');
+  const [education, setEducation] = useState('');
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
   const navigate = useNavigate();
@@ -19,11 +22,15 @@ export default function Signup() {
 
     try {
       const { user } = await createUserWithEmailAndPassword(auth, email, password);
+      await updateProfile(user, { displayName }); // Set display name in Firebase Auth
       
       // Create user document in Firestore
       await setDoc(doc(db, 'users', user.uid), {
         displayName,
         email,
+        about,
+        skills,
+        education,
         createdAt: new Date().toISOString()
       });
 
@@ -110,6 +117,42 @@ export default function Signup() {
                 onChange={(e) => setPassword(e.target.value)}
               />
             </div>
+            <div>
+              <label htmlFor="about" className="sr-only">About Me</label>
+              <textarea
+                id="about"
+                name="about"
+                rows={2}
+                className="appearance-none rounded-none relative block w-full px-3 py-2 border border-gray-300 placeholder-gray-500 text-gray-900 focus:outline-none focus:ring-primary-500 focus:border-primary-500 focus:z-10 sm:text-sm"
+                placeholder="About Me"
+                value={about}
+                onChange={e => setAbout(e.target.value)}
+              />
+            </div>
+            <div>
+              <label htmlFor="skills" className="sr-only">Skills (comma separated)</label>
+              <input
+                id="skills"
+                name="skills"
+                type="text"
+                className="appearance-none rounded-none relative block w-full px-3 py-2 border border-gray-300 placeholder-gray-500 text-gray-900 focus:outline-none focus:ring-primary-500 focus:border-primary-500 focus:z-10 sm:text-sm"
+                placeholder="Skills (comma separated)"
+                value={skills}
+                onChange={e => setSkills(e.target.value)}
+              />
+            </div>
+            <div>
+              <label htmlFor="education" className="sr-only">Education</label>
+              <input
+                id="education"
+                name="education"
+                type="text"
+                className="appearance-none rounded-none relative block w-full px-3 py-2 border border-gray-300 placeholder-gray-500 text-gray-900 focus:outline-none focus:ring-primary-500 focus:border-primary-500 focus:z-10 sm:text-sm"
+                placeholder="Education"
+                value={education}
+                onChange={e => setEducation(e.target.value)}
+              />
+            </div>
           </div>
 
           <div>
@@ -125,4 +168,4 @@ export default function Signup() {
       </div>
     </div>
   );
-} 
+}
