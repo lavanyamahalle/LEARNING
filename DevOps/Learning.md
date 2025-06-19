@@ -454,4 +454,5 @@ These platforms host Git repositories **online** and provide tools for collabora
 **Why it matters:**
 DevOps teams use platforms like GitHub to manage code, track bugs, and automate deployment.
 
-
+---------------- 
+Ci/CD - continous integration / continuous deployment
