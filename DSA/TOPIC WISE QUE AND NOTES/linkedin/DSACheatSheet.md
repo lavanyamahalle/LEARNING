@@ -723,3 +723,35 @@ string convertCase(const string &input) {
 * Time Complexity: **O(n)**, Space Complexity: **O(n)**
 
 ---
+### 21. Find Second Largest Number in an Array
+
+```cpp
+// Function to find second largest number
+int findSecondLargest(const vector<int> &arr) {
+    int largest = INT_MIN;
+    int secondLargest = INT_MIN;
+
+    for (int num : arr) {
+        if (num > largest) {
+            secondLargest = largest;
+            largest = num;
+        } else if (num > secondLargest && num != largest) {
+            secondLargest = num;
+        }
+    }
+    return secondLargest;
+}
+
+// Example usage:
+// vector<int> numbers = {12, 35, 1, 10, 34, 1};
+// cout << "Second largest number: " << findSecondLargest(numbers) << endl;
+// Output: Second largest number: 34
+```
+
+**Explanation (interview note):**
+
+* Uses **single traversal**, tracking `largest` and `secondLargest`.
+* Handles duplicate maximum values properly.
+* Time Complexity: **O(n)**, Space Complexity: **O(1)**
+
+---
