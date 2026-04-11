@@ -731,3 +731,320 @@ If you want, I can also show:
 • visual diagram steps
 • BFS version
 • Tree BFS pattern next
+
+
+
+Great question 👍
+When **tree nodes can have negative values**, **Path Sum logic slightly changes depending on problem type**.
+
+Important distinction:
+
+| Problem Type            | Negative values effect        |
+| ----------------------- | ----------------------------- |
+| Root → Leaf Path Sum    | works normally                |
+| Path Sum III (any path) | needs prefix sum              |
+| Maximum Path Sum        | must ignore negative branches |
+
+Below are the **3 common cases Amazon asks**.
+
+---
+
+# 1️⃣ Root → Leaf Path Sum (negative values allowed)
+
+Example:
+
+```
+        1
+       / \
+     -2  -3
+     / \
+    1   3
+```
+
+Target = -1
+
+Valid path:
+
+```
+1 → -2 → 1 = 0 ❌
+1 → -2 → 3 = 2 ❌
+1 → -3 = -2 ❌
+```
+
+No path.
+
+---
+
+## Code (same logic works)
+
+```cpp
+bool hasPathSum(TreeNode* root, int target)
+{
+    if(!root)
+        return false;
+
+    // leaf node
+    if(!root->left && !root->right)
+        return target == root->val;
+
+    target -= root->val;
+
+    return hasPathSum(root->left,target)
+        ||
+           hasPathSum(root->right,target);
+}
+```
+
+### Why this still works?
+
+Because we always subtract:
+
+```
+remaining = target - node value
+```
+
+Even if value is negative:
+
+```
+target = 5
+node = -2
+
+remaining = 5 - (-2)
+= 7
+```
+
+Works correctly ✔
+
+---
+
+# Dry Run with Negative Values
+
+Tree:
+
+```
+        1
+       / \
+     -2  -3
+     /
+    1
+```
+
+Target = 0
+
+---
+
+Step 1:
+
+```
+target = 0
+0 - 1 = -1
+```
+
+Step 2:
+
+```
+-1 - (-2) = 1
+```
+
+Step 3:
+
+```
+1 - 1 = 0
+```
+
+leaf reached ✔
+
+Answer:
+
+```
+true
+```
+
+---
+
+# 2️⃣ Path Sum III (any node → any node) ⭐ very important
+
+Path can start anywhere.
+
+Negative values make problem tricky.
+
+---
+
+Example:
+
+```
+      10
+      / \
+     5  -3
+    / \   \
+   3   2   11
+```
+
+Target = 8
+
+Paths:
+
+```
+5 → 3 = 8
+-3 → 11 = 8
+```
+
+Answer = 2 paths
+
+---
+
+## Optimized Prefix Sum Approach
+
+```cpp
+unordered_map<long,int> mp;
+
+int dfs(TreeNode* root,
+        long currSum,
+        int target)
+{
+    if(!root)
+        return 0;
+
+    currSum += root->val;
+
+    int count =
+    mp[currSum-target];
+
+    mp[currSum]++;
+
+    count +=
+    dfs(root->left,
+        currSum,
+        target);
+
+    count +=
+    dfs(root->right,
+        currSum,
+        target);
+
+    mp[currSum]--;
+
+    return count;
+}
+```
+
+Initial:
+
+```cpp
+mp[0] = 1;
+dfs(root,0,target);
+```
+
+---
+
+### Why prefix sum works?
+
+We store cumulative sum.
+
+If:
+
+```
+currSum - target exists in map
+```
+
+means valid path found.
+
+---
+
+# 3️⃣ Maximum Path Sum (negative values allowed)
+
+We must avoid negative branches.
+
+Example:
+
+```
+       -10
+       /  \
+      9   20
+         /  \
+        15   7
+```
+
+Answer:
+
+```
+15 + 20 + 7 = 42
+```
+
+Ignore -10.
+
+---
+
+## Code
+
+```cpp
+int maxSum = INT_MIN;
+
+int dfs(TreeNode* root)
+{
+    if(!root)
+        return 0;
+
+    int left =
+    max(0, dfs(root->left));
+
+    int right =
+    max(0, dfs(root->right));
+
+    maxSum =
+    max(maxSum,
+        left + right + root->val);
+
+    return
+    max(left,right)
+    + root->val;
+}
+```
+
+---
+
+# Key Insight for Negative Nodes
+
+We use:
+
+```
+max(0, subtree sum)
+```
+
+Why?
+
+If subtree gives negative sum → ignore it.
+
+---
+
+# Interview Tip ⭐
+
+If negative values exist:
+
+Ask interviewer:
+
+```
+can path start anywhere?
+or must start from root?
+```
+
+because solution changes.
+
+---
+
+# Summary
+
+| problem              | negative values handling |
+| -------------------- | ------------------------ |
+| Path Sum (root→leaf) | works normally           |
+| Path Sum III         | use prefix sum           |
+| Max Path Sum         | ignore negative subtree  |
+
+---
+
+If you want, I can show:
+
+• full dry run Path Sum III
+• prefix sum intuition diagram
+• tree problems with negative numbers
+• difference between all path sum problems
