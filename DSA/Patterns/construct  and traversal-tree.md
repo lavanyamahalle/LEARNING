@@ -656,3 +656,534 @@ If you want, I can also give:
 • 10 most asked tree questions Amazon
 • iterative postorder using 1 stack
 • all patterns summary table
+
+
+
+
+
+
+Here are **ALL TREE TEMPLATES COMBINED** 🌳 (Amazon SDE-1 Quick Revision Sheet)
+
+These cover **90% tree questions** in interviews.
+
+Language: **C++**
+
+---
+
+# 0️⃣ Tree Node Structure
+
+```cpp
+struct TreeNode
+{
+    int val;
+    TreeNode* left;
+    TreeNode* right;
+
+    TreeNode(int x)
+    {
+        val = x;
+        left = NULL;
+        right = NULL;
+    }
+};
+```
+
+---
+
+# 1️⃣ DFS Template (Recursive)
+
+Use for:
+depth, path sum, diameter, same tree
+
+```cpp
+int dfs(TreeNode* root)
+{
+    if(root == NULL)
+        return base_value;
+
+    int left =
+    dfs(root->left);
+
+    int right =
+    dfs(root->right);
+
+    return combine(left,right);
+}
+```
+
+TC = O(n)
+SC = O(h)
+
+---
+
+# 2️⃣ BFS Template (Level Order)
+
+Use for:
+level order, minimum depth
+
+```cpp
+queue<TreeNode*> q;
+
+q.push(root);
+
+while(!q.empty())
+{
+    TreeNode* node =
+    q.front();
+
+    q.pop();
+
+    if(node->left)
+        q.push(node->left);
+
+    if(node->right)
+        q.push(node->right);
+}
+```
+
+TC = O(n)
+
+---
+
+# 3️⃣ Inorder Traversal
+
+Left Root Right
+
+```cpp
+void inorder(TreeNode* root)
+{
+    if(!root)
+        return;
+
+    inorder(root->left);
+
+    cout<<root->val;
+
+    inorder(root->right);
+}
+```
+
+BST inorder → sorted output
+
+---
+
+# 4️⃣ Preorder Traversal
+
+Root Left Right
+
+```cpp
+void preorder(TreeNode* root)
+{
+    if(!root)
+        return;
+
+    cout<<root->val;
+
+    preorder(root->left);
+
+    preorder(root->right);
+}
+```
+
+used in tree construction
+
+---
+
+# 5️⃣ Postorder Traversal
+
+Left Right Root
+
+```cpp
+void postorder(TreeNode* root)
+{
+    if(!root)
+        return;
+
+    postorder(root->left);
+
+    postorder(root->right);
+
+    cout<<root->val;
+}
+```
+
+used in delete tree
+
+---
+
+# 6️⃣ Max Depth of Tree
+
+```cpp
+int maxDepth(TreeNode* root)
+{
+    if(!root)
+        return 0;
+
+    return
+    max(maxDepth(root->left),
+        maxDepth(root->right))
+    + 1;
+}
+```
+
+TC = O(n)
+
+---
+
+# 7️⃣ Diameter of Tree
+
+```cpp
+int diameter = 0;
+
+int dfs(TreeNode* root)
+{
+    if(!root)
+        return 0;
+
+    int left =
+    dfs(root->left);
+
+    int right =
+    dfs(root->right);
+
+    diameter =
+    max(diameter,
+        left + right);
+
+    return
+    max(left,right) + 1;
+}
+```
+
+---
+
+# 8️⃣ Path Sum
+
+```cpp
+bool hasPathSum(TreeNode* root,
+                int target)
+{
+    if(!root)
+        return false;
+
+    if(!root->left &&
+       !root->right)
+        return target == root->val;
+
+    target -= root->val;
+
+    return
+    hasPathSum(root->left,target)
+    ||
+    hasPathSum(root->right,target);
+}
+```
+
+---
+
+# 9️⃣ Same Tree
+
+```cpp
+bool isSameTree(TreeNode* p,
+                TreeNode* q)
+{
+    if(!p && !q)
+        return true;
+
+    if(!p || !q)
+        return false;
+
+    if(p->val != q->val)
+        return false;
+
+    return
+    isSameTree(p->left,q->left)
+    &&
+    isSameTree(p->right,q->right);
+}
+```
+
+---
+
+# 🔟 Lowest Common Ancestor (Binary Tree)
+
+```cpp
+TreeNode* LCA(TreeNode* root,
+              TreeNode* p,
+              TreeNode* q)
+{
+    if(!root || root==p || root==q)
+        return root;
+
+    TreeNode* left =
+    LCA(root->left,p,q);
+
+    TreeNode* right =
+    LCA(root->right,p,q);
+
+    if(left && right)
+        return root;
+
+    return left ? left : right;
+}
+```
+
+---
+
+# 1️⃣1️⃣ Validate BST
+
+```cpp
+bool valid(TreeNode* root,
+           long min,
+           long max)
+{
+    if(!root)
+        return true;
+
+    if(root->val <= min ||
+       root->val >= max)
+        return false;
+
+    return
+    valid(root->left,min,root->val)
+    &&
+    valid(root->right,root->val,max);
+}
+```
+
+call:
+
+```cpp
+valid(root,
+LONG_MIN,
+LONG_MAX);
+```
+
+---
+
+# 1️⃣2️⃣ Search in BST
+
+```cpp
+TreeNode* searchBST(TreeNode* root,
+                    int val)
+{
+    if(!root ||
+       root->val == val)
+        return root;
+
+    if(val < root->val)
+        return searchBST(root->left,val);
+
+    return searchBST(root->right,val);
+}
+```
+
+---
+
+# 1️⃣3️⃣ Insert in BST
+
+```cpp
+TreeNode* insertBST(TreeNode* root,
+                    int val)
+{
+    if(!root)
+        return new TreeNode(val);
+
+    if(val < root->val)
+        root->left =
+        insertBST(root->left,val);
+
+    else
+        root->right =
+        insertBST(root->right,val);
+
+    return root;
+}
+```
+
+---
+
+# 1️⃣4️⃣ Level Order Traversal
+
+```cpp
+vector<vector<int>>
+levelOrder(TreeNode* root)
+{
+    vector<vector<int>> ans;
+
+    if(!root)
+        return ans;
+
+    queue<TreeNode*> q;
+
+    q.push(root);
+
+    while(!q.empty())
+    {
+        int size = q.size();
+
+        vector<int> level;
+
+        for(int i=0;i<size;i++)
+        {
+            TreeNode* node =
+            q.front();
+
+            q.pop();
+
+            level.push_back(node->val);
+
+            if(node->left)
+                q.push(node->left);
+
+            if(node->right)
+                q.push(node->right);
+        }
+
+        ans.push_back(level);
+    }
+
+    return ans;
+}
+```
+
+---
+
+# 1️⃣5️⃣ Zigzag Traversal (Queue)
+
+```cpp
+vector<vector<int>>
+zigzagLevelOrder(TreeNode* root)
+{
+    vector<vector<int>> ans;
+
+    if(!root)
+        return ans;
+
+    queue<TreeNode*> q;
+
+    q.push(root);
+
+    bool leftToRight = true;
+
+    while(!q.empty())
+    {
+        int size = q.size();
+
+        vector<int> level(size);
+
+        for(int i=0;i<size;i++)
+        {
+            TreeNode* node =
+            q.front();
+
+            q.pop();
+
+            int index =
+            leftToRight ?
+            i : size-1-i;
+
+            level[index] =
+            node->val;
+
+            if(node->left)
+                q.push(node->left);
+
+            if(node->right)
+                q.push(node->right);
+        }
+
+        leftToRight =
+        !leftToRight;
+
+        ans.push_back(level);
+    }
+
+    return ans;
+}
+```
+
+---
+
+# 1️⃣6️⃣ Build Tree (Preorder + Inorder)
+
+```cpp
+TreeNode* build(
+vector<int>& preorder,
+int& preIdx,
+int left,
+int right,
+unordered_map<int,int>& mp)
+{
+    if(left > right)
+        return NULL;
+
+    int val =
+    preorder[preIdx++];
+
+    TreeNode* root =
+    new TreeNode(val);
+
+    int index =
+    mp[val];
+
+    root->left =
+    build(preorder,
+          preIdx,
+          left,
+          index-1,
+          mp);
+
+    root->right =
+    build(preorder,
+          preIdx,
+          index+1,
+          right,
+          mp);
+
+    return root;
+}
+```
+
+---
+
+# Tree Pattern Summary
+
+| pattern   | use         |
+| --------- | ----------- |
+| DFS       | depth, path |
+| BFS       | level order |
+| BST       | search fast |
+| recursion | divide tree |
+| stack     | traversal   |
+
+---
+
+# Complexity Quick Memory
+
+DFS:
+
+```
+O(n)
+```
+
+BFS:
+
+```
+O(n)
+```
+
+BST search:
+
+```
+O(log n)
+```
+
+---
+
+If you want, I can also provide:
+
+• graph templates combined
+• DP templates combined
+• full DSA cheat sheet for Amazon
+• last 2 day revision plan 🚀
