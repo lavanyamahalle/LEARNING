@@ -716,3 +716,828 @@ If you want, I can also provide:
 • top 10 graph questions Amazon
 • DP patterns explained
 • full DSA patterns summary 🚀
+
+
+
+
+ Here are **Course Schedule I and Course Schedule II** together ⭐
+(using **DFS recursion for cycle detection** + **stack for topo sort**)
+
+Very important Amazon pattern.
+
+---
+
+# Course Schedule I (CS1)
+
+### Problem
+
+Check if it is possible to complete all courses.
+
+Return:
+
+```
+true / false
+```
+
+We only check if **cycle exists**.
+
+If cycle → cannot complete.
+
+---
+
+# Approach
+
+Detect cycle in directed graph using DFS.
+
+---
+
+# CS1 Code (DFS cycle detection)
+
+```cpp
+bool dfs(int node,
+         vector<vector<int>>& graph,
+         vector<int>& visited,
+         vector<int>& pathVisited)
+{
+    visited[node] = 1;
+
+    pathVisited[node] = 1;
+
+    for(int nei : graph[node])
+    {
+        if(!visited[nei])
+        {
+            if(dfs(nei,
+                   graph,
+                   visited,
+                   pathVisited))
+                return true;
+        }
+
+        else if(pathVisited[nei])
+            return true;
+    }
+
+    pathVisited[node] = 0;
+
+    return false;
+}
+```
+
+Main:
+
+```cpp
+bool canFinish(
+int numCourses,
+vector<vector<int>>& pre)
+{
+    vector<vector<int>> graph(numCourses);
+
+    for(auto p : pre)
+    {
+        graph[p[1]].push_back(p[0]);
+    }
+
+    vector<int> visited(numCourses,0);
+    vector<int> pathVisited(numCourses,0);
+
+    for(int i=0;i<numCourses;i++)
+    {
+        if(!visited[i])
+        {
+            if(dfs(i,
+                   graph,
+                   visited,
+                   pathVisited))
+                return false;
+        }
+    }
+
+    return true;
+}
+```
+
+---
+
+# Course Schedule II (CS2)
+
+### Problem
+
+Return valid order of courses.
+
+Return:
+
+```
+vector<int> order
+```
+
+If cycle → return empty vector.
+
+---
+
+# Approach
+
+1. detect cycle using DFS recursion
+2. store nodes in stack
+3. stack gives topological order
+
+---
+
+# CS2 Code (DFS + stack topo sort)
+
+```cpp
+bool dfs(int node,
+         vector<vector<int>>& graph,
+         vector<int>& visited,
+         vector<int>& pathVisited,
+         stack<int>& st)
+{
+    visited[node] = 1;
+
+    pathVisited[node] = 1;
+
+    for(int nei : graph[node])
+    {
+        if(!visited[nei])
+        {
+            if(dfs(nei,
+                   graph,
+                   visited,
+                   pathVisited,
+                   st))
+                return true;
+        }
+
+        else if(pathVisited[nei])
+            return true;
+    }
+
+    pathVisited[node] = 0;
+
+    st.push(node);
+
+    return false;
+}
+```
+
+Main:
+
+```cpp
+vector<int> findOrder(
+int numCourses,
+vector<vector<int>>& pre)
+{
+    vector<vector<int>> graph(numCourses);
+
+    for(auto p : pre)
+    {
+        graph[p[1]].push_back(p[0]);
+    }
+
+    vector<int> visited(numCourses,0);
+    vector<int> pathVisited(numCourses,0);
+
+    stack<int> st;
+
+    for(int i=0;i<numCourses;i++)
+    {
+        if(!visited[i])
+        {
+            if(dfs(i,
+                   graph,
+                   visited,
+                   pathVisited,
+                   st))
+                return {};
+        }
+    }
+
+    vector<int> order;
+
+    while(!st.empty())
+    {
+        order.push_back(st.top());
+        st.pop();
+    }
+
+    return order;
+}
+```
+
+---
+
+# Example
+
+```
+numCourses = 4
+
+pre =
+[
+ [1,0],
+ [2,0],
+ [3,1],
+ [3,2]
+]
+```
+
+Graph:
+
+```
+0 → 1
+0 → 2
+1 → 3
+2 → 3
+```
+
+Output:
+
+```
+[0,2,1,3]
+```
+
+OR
+
+```
+[0,1,2,3]
+```
+
+---
+
+# Complexity
+
+DFS traversal:
+
+```
+O(V + E)
+```
+
+Space:
+
+```
+O(V)
+```
+
+---
+
+# Difference between CS1 and CS2
+
+| feature         | CS1        | CS2   |
+| --------------- | ---------- | ----- |
+| output          | true/false | order |
+| stack needed    | no         | yes   |
+| topo sort       | no         | yes   |
+| cycle detection | yes        | yes   |
+
+---
+
+# Interview Tip
+
+Explain like:
+
+Courses = nodes
+Prerequisites = edges
+Cycle = impossible to finish
+
+CS1 → detect cycle
+CS2 → return order
+
+---
+
+# Which Orange to Remove so Safety Increases 🍊
+
+Goal:
+
+> Remove **one fresh orange (1)** so that **maximum number of oranges remain safe** (not infected).
+
+We use **DFS infection simulation**.
+
+---
+
+# Idea
+
+Infection spreads from rotten oranges (2).
+
+We try removing each fresh orange:
+
+```text
+temporarily change 1 → 0
+```
+
+Then simulate spread using DFS.
+
+Count how many oranges remain **uninfected (1)**.
+
+Pick removal giving **maximum safe oranges**.
+
+---
+
+# Example
+
+```text
+grid =
+2 1 1
+1 1 0
+0 1 1
+```
+
+Infection spreads everywhere.
+
+Safe oranges:
+
+```
+0
+```
+
+Try removing (0,1):
+
+```text
+2 0 1
+1 1 0
+0 1 1
+```
+
+Spread stops early.
+
+Safe oranges increase ✔
+
+---
+
+# DFS Infection Function
+
+We store infection time in grid.
+
+```cpp
+void dfs(int r,int c,
+         vector<vector<int>>& grid,
+         int time)
+{
+    int n = grid.size();
+    int m = grid[0].size();
+
+    if(r<0 || c<0 ||
+       r>=n || c>=m)
+        return;
+
+    if(grid[r][c]==0)
+        return;
+
+    if(grid[r][c]>1 &&
+       grid[r][c]<time)
+        return;
+
+    grid[r][c]=time;
+
+    dfs(r+1,c,grid,time+1);
+    dfs(r-1,c,grid,time+1);
+    dfs(r,c+1,grid,time+1);
+    dfs(r,c-1,grid,time+1);
+}
+```
+
+---
+
+# Count safe oranges after spread
+
+```cpp
+int countSafe(
+vector<vector<int>> grid)
+{
+    int n = grid.size();
+    int m = grid[0].size();
+
+    // spread infection
+    for(int i=0;i<n;i++)
+    {
+        for(int j=0;j<m;j++)
+        {
+            if(grid[i][j]==2)
+                dfs(i,j,grid,2);
+        }
+    }
+
+    int safe=0;
+
+    for(int i=0;i<n;i++)
+    {
+        for(int j=0;j<m;j++)
+        {
+            if(grid[i][j]==1)
+                safe++;
+        }
+    }
+
+    return safe;
+}
+```
+
+---
+
+# MAIN LOGIC
+
+Try removing each orange
+
+Choose removal giving maximum safety.
+
+```cpp
+pair<int,int> bestOrangeToRemove(
+vector<vector<int>> grid)
+{
+    int n = grid.size();
+    int m = grid[0].size();
+
+    int maxSafe = 0;
+
+    pair<int,int> best =
+    {-1,-1};
+
+    for(int i=0;i<n;i++)
+    {
+        for(int j=0;j<m;j++)
+        {
+            if(grid[i][j]==1)
+            {
+                vector<vector<int>>
+                temp = grid;
+
+                // remove orange
+                temp[i][j]=0;
+
+                int safe =
+                countSafe(temp);
+
+                if(safe > maxSafe)
+                {
+                    maxSafe = safe;
+
+                    best = {i,j};
+                }
+            }
+        }
+    }
+
+    return best;
+}
+```
+
+---
+
+# Output
+
+Returns position:
+
+```text
+(row, col)
+```
+
+orange to remove.
+
+---
+
+# Dry Run
+
+Grid:
+
+```text
+2 1 1
+1 1 0
+0 1 1
+```
+
+Try removing:
+
+### remove (0,1)
+
+```text
+2 0 1
+1 1 0
+0 1 1
+```
+
+spread stops early.
+
+safe oranges:
+
+```
+3
+```
+
+better result ✔
+
+---
+
+# Complexity
+
+Try each cell:
+
+```
+n*m
+```
+
+DFS each time:
+
+```
+n*m
+```
+
+Total:
+
+```
+O((n*m)²)
+```
+
+---
+
+# Why this works
+
+Removing orange blocks infection path.
+
+Graph connectivity breaks.
+
+Safe region increases.
+
+---
+
+# Interview Explanation
+
+We simulate infection spread using DFS.
+
+We try removing each fresh orange.
+
+We choose removal that maximizes number of safe oranges.
+
+---
+
+If you want, I can also provide:
+
+• visual diagram explanation
+• optimized version idea
+• similar Amazon grid problems
+• grid DFS cheat sheet 🚀
+Great observation 👍
+Actually, **removing (0,1) does NOT save 3 oranges** in this grid. Let's carefully **dry run** to see the truth.
+
+Grid:
+
+```
+2 1 1
+1 1 0
+0 1 1
+```
+
+Coordinates (row,col):
+
+```
+(0,0) (0,1) (0,2)
+(1,0) (1,1) (1,2)
+(2,0) (2,1) (2,2)
+```
+
+Rotten orange:
+
+```
+(0,0)
+```
+
+---
+
+# Case: remove (0,1)
+
+Remove means convert 1 → 0.
+
+New grid:
+
+```
+2 0 1
+1 1 0
+0 1 1
+```
+
+---
+
+# DFS spread from (0,0)
+
+Step 1:
+
+infect neighbours of (0,0)
+
+possible directions:
+
+```
+down → (1,0)
+right → (0,1) blocked (0)
+```
+
+grid:
+
+```
+2 0 1
+2 1 0
+0 1 1
+```
+
+---
+
+Step 2:
+
+from (1,0)
+
+spread:
+
+```
+right → (1,1)
+```
+
+grid:
+
+```
+2 0 1
+2 2 0
+0 1 1
+```
+
+---
+
+Step 3:
+
+from (1,1)
+
+spread:
+
+```
+down → (2,1)
+```
+
+grid:
+
+```
+2 0 1
+2 2 0
+0 2 1
+```
+
+---
+
+Step 4:
+
+from (2,1)
+
+spread:
+
+```
+right → (2,2)
+```
+
+grid:
+
+```
+2 0 1
+2 2 0
+0 2 2
+```
+
+---
+
+Step 5:
+
+from (2,2)
+
+spread:
+
+```
+up blocked
+right blocked
+down blocked
+left already infected
+```
+
+---
+
+# Final grid
+
+```
+2 0 1
+2 2 0
+0 2 2
+```
+
+Remaining fresh oranges:
+
+```
+(0,2)
+```
+
+Safe oranges = **1**
+
+NOT 3 ❌
+
+---
+
+# Why only 1 safe?
+
+Because infection found another path:
+
+```
+(0,0)
+ ↓
+(1,0)
+ →
+(1,1)
+ ↓
+(2,1)
+ →
+(2,2)
+```
+
+Grid still connected.
+
+---
+
+# Try removing (1,1) instead
+
+Remove center orange:
+
+```
+2 1 1
+1 0 0
+0 1 1
+```
+
+Spread:
+
+from (0,0)
+
+```
+2 2 2
+2 0 0
+0 1 1
+```
+
+Remaining safe:
+
+```
+(2,1)
+(2,2)
+```
+
+Safe oranges = 2 ✔ better result
+
+---
+
+# Best removal for this grid
+
+Remove:
+
+```
+(1,1)
+```
+
+because it breaks major connection path.
+
+---
+
+# Key Insight
+
+We want to remove node that breaks connectivity most.
+
+Middle nodes often control spread.
+
+Graph intuition:
+
+center node acts like bridge.
+
+---
+
+# Correct Output for this grid
+
+Best cell to remove:
+
+```
+(1,1)
+```
+
+Safe oranges:
+
+```
+2
+```
+
+---
+
+# Interview Tip
+
+Think of grid as graph.
+
+Remove node that disconnects graph most.
+
+Usually:
+
+center cells important.
+
+---
+
+If you want, I can also show:
+
+• visual graph diagram
+• optimized approach intuition
+• similar grid problems asked by Amazon
+• articulation point intuition (very useful)
