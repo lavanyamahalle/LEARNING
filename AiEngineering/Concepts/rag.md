@@ -14,7 +14,7 @@
 ## RAG Architecture Explained (Based on Diagram)
 
 This diagram shows how a real-world **RAG (Retrieval-Augmented Generation)** system works with an LLM + external data sources.
-![RAG Diagram](../assets/images/rag-diagram.png)
+![RAG Diagram](../../assets/images/rag-diagram.png)
 ---
 
 ## 🧩 1. Frontend (Client Layer)
