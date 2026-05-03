@@ -42,7 +42,7 @@
 # 📊 MCP Architecture Diagram (Full Flow Explanation)
 
 This diagram shows the **end-to-end architecture of how MCP works in a real system**.
-![MCP Diagram](../assets/images/mcp.png)
+![MCP Diagram](../../assets/images/mcp.png)
 ---
 
 # 📊 MCP Architecture Diagram (Detailed Explanation)
