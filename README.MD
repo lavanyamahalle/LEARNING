@@ -2,6 +2,6 @@
 
 
 
-# https://learning-lavanya-iota-three.vercel.app/
+# https://learning-iota-three.vercel.app/
 
                                                ~Lavanya Mahalle
