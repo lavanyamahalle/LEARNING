@@ -2076,7 +2076,6 @@ app.<span class="fn">use</span>((req, res, next) => {
 </div>
 
 <div class="divider"></div>
-
 <!-- FINAL: INTERVIEW QUICK REFERENCE -->
 <div class="concept" id="interview">
   <div class="concept-header">
@@ -2087,78 +2086,328 @@ app.<span class="fn">use</span>((req, res, next) => {
     </div>
   </div>
 
+  <!-- Question 1 -->
   <div class="qa">
     <div class="qa-q" onclick="toggleQA(this)">
       <span>❓ 10,000 tickets/minute — what breaks first?</span>
       <span class="qa-toggle">▼</span>
     </div>
+
     <div class="qa-a">
-      <p>The first bottleneck is the <strong>Gemini API rate limits</strong>. Because I used Inngest, Express itself doesn't crash — it returns 201 Created instantly and buffers events. I'd configure Inngest's concurrency settings to process N tickets/second, letting the rest queue up. Second bottleneck: MongoDB connection pool. Fix: read replicas for read scaling, increase pool size. The system degrades gracefully — tickets get processed with some delay, not lost.</p>
+      <p>The first bottleneck would be the <strong>Gemini API rate limits</strong>. AI APIs are slower and more limited compared to normal backend or database operations. If every incoming ticket directly calls Gemini synchronously, requests will start getting throttled.</p>
+
+      <p>To solve this, I use <strong>Inngest</strong> for async background processing. Express does not wait for AI processing to complete. It instantly returns <code>201 Created</code> and pushes the job into the Inngest queue.</p>
+
+      <pre><code>Client Request
+      ↓
+Express API
+      ↓
+Inngest Queue
+      ↓
+Background Processing</code></pre>
+
+      <p>Inngest processes jobs with controlled concurrency.</p>
+
+      <pre><code>Process N tickets/second
+Remaining tickets stay queued safely</code></pre>
+
+      <p>This prevents sudden traffic spikes from crashing the backend.</p>
+
+      <p>The second bottleneck is the <strong>MongoDB connection pool</strong>. Under heavy load, too many simultaneous DB operations can exhaust available connections.</p>
+
+      <p>Fixes include:</p>
+
+      <ul>
+        <li>Increasing MongoDB pool size</li>
+        <li>Using read replicas</li>
+        <li>Adding indexes</li>
+        <li>Using bulk operations</li>
+      </ul>
+
+      <p>The important design goal is graceful degradation. Tickets are never lost — processing may become delayed, but jobs remain safely queued.</p>
     </div>
   </div>
 
+  <!-- Question 2 -->
   <div class="qa">
     <div class="qa-q" onclick="toggleQA(this)">
       <span>❓ What if the email fails after the DB update succeeds?</span>
       <span class="qa-toggle">▼</span>
     </div>
+
     <div class="qa-a">
-      <p>Because each Inngest step is tracked independently, if the "send-email" step throws, Inngest retries just that step with exponential backoff — it does NOT re-run the AI analysis or DB update. If all retries fail, the event goes to a Dead Letter Queue where an admin can inspect the failure and manually re-trigger the email. The ticket is assigned correctly even if the email fails.</p>
+      <p>I use <strong>Inngest step-based workflows</strong>. Every workflow step is tracked independently.</p>
+
+      <pre><code>Step 1 → AI Analysis
+Step 2 → DB Update
+Step 3 → Send Email</code></pre>
+
+      <p>If the email step fails, Inngest retries only that failed step instead of restarting the whole workflow.</p>
+
+      <pre><code>AI Analysis ✅
+DB Update ✅
+Email ❌</code></pre>
+
+      <p>Retries use exponential backoff:</p>
+
+      <pre><code>Retry 1 → few seconds later
+Retry 2 → longer delay
+Retry 3 → even longer delay</code></pre>
+
+      <p>This prevents duplicate AI processing or duplicate DB updates.</p>
+
+      <p>If all retries fail, the event moves into a <strong>Dead Letter Queue (DLQ)</strong> where admins can inspect failures and manually re-trigger processing.</p>
+
+      <p>The ticket assignment remains correct even if the email service temporarily fails.</p>
     </div>
   </div>
 
+  <!-- Question 3 -->
   <div class="qa">
     <div class="qa-q" onclick="toggleQA(this)">
       <span>❓ How do you prevent double ticket assignment?</span>
       <span class="qa-toggle">▼</span>
     </div>
+
     <div class="qa-a">
-      <p>MongoDB's <code>findOneAndUpdate</code> with the filter <code>{ _id: ticketId, assignedTo: null }</code>. The check AND the update are atomic at the document level. Even if 100 workers send this query simultaneously, only one matches the filter — the rest get null back and stop processing. This eliminates the race condition completely without needing distributed locks.</p>
+      <p>I prevent race conditions using MongoDB's atomic <code>findOneAndUpdate()</code>.</p>
+
+      <pre><code>findOneAndUpdate(
+  {
+    _id: ticketId,
+    assignedTo: null
+  },
+  {
+    assignedTo: moderatorId
+  }
+)</code></pre>
+
+      <p>The important condition is:</p>
+
+      <pre><code>assignedTo: null</code></pre>
+
+      <p>This means MongoDB only updates the ticket if nobody has already assigned it.</p>
+
+      <p>The check and update happen atomically at the database level. Even if 100 workers hit the query simultaneously, only one succeeds. Others receive <code>null</code> and stop processing.</p>
+
+      <p>This completely eliminates duplicate assignments without requiring Redis locks or distributed locking systems.</p>
     </div>
   </div>
 
+  <!-- Question 4 -->
   <div class="qa">
     <div class="qa-q" onclick="toggleQA(this)">
       <span>❓ What if Gemini returns invalid JSON or is injected?</span>
       <span class="qa-toggle">▼</span>
     </div>
+
     <div class="qa-a">
-      <p>Three layers of defense: (1) The system prompt strictly instructs Gemini to return only JSON. (2) The response goes through a regex parser that extracts JSON even if wrapped in markdown backticks. (3) The parsed result is validated against a Zod schema — if any required field is missing or wrong type, the parsing fails. On failure, the ticket status is set to <code>AI_FAILED</code>, the raw output is saved for debugging, and the ticket is flagged for manual admin review. Prompt injection can't bypass this because the validation happens on my server, not inside the AI.</p>
+      <p>I never trust AI output directly. I use multiple validation layers.</p>
+
+      <p><strong>Layer 1 — Strict Prompting</strong></p>
+
+      <p>The system prompt strictly instructs Gemini to return only JSON.</p>
+
+      <p><strong>Layer 2 — JSON Extraction</strong></p>
+
+      <p>Sometimes Gemini wraps JSON inside markdown backticks or adds extra explanation text. I use regex extraction to isolate the JSON block.</p>
+
+      <p><strong>Layer 3 — Safe Parsing</strong></p>
+
+      <pre><code>try {
+  const parsed = JSON.parse(response)
+} catch(err) {
+  // handle safely
+}</code></pre>
+
+      <p>This prevents malformed AI responses from crashing the backend.</p>
+
+      <p><strong>Layer 4 — Zod Validation</strong></p>
+
+      <pre><code>z.object({
+  priority: z.string(),
+  category: z.string()
+})</code></pre>
+
+      <p>If required fields are missing or wrong types are returned, validation fails immediately.</p>
+
+      <p>On failure:</p>
+
+      <ul>
+        <li>Ticket status becomes <code>AI_FAILED</code></li>
+        <li>Raw AI response is stored</li>
+        <li>Admin review is triggered</li>
+      </ul>
+
+      <p>Prompt injection cannot bypass this because validation happens on the backend server, not inside the AI model.</p>
     </div>
   </div>
 
+  <!-- Question 5 -->
   <div class="qa">
     <div class="qa-q" onclick="toggleQA(this)">
       <span>❓ How do you handle JWT logout securely?</span>
       <span class="qa-toggle">▼</span>
     </div>
+
     <div class="qa-a">
-      <p>Current TicketWise just deletes the token client-side — a stolen token is still valid until expiry. Enterprise fix: (1) Short-lived access tokens (15 min) + long-lived refresh tokens (7 days). (2) Refresh tokens stored server-side in Redis. (3) On logout, delete the refresh token from Redis — they can't get a new access token. (4) Store the refresh token in an httpOnly cookie to prevent XSS theft. (5) Access token can be blacklisted in Redis with a TTL matching its remaining expiry.</p>
+      <p>Basic JWT logout is insecure because deleting the token only on the client side does not invalidate it on the server. A stolen token remains valid until expiry.</p>
+
+      <p>Enterprise systems solve this using access tokens and refresh tokens.</p>
+
+      <p><strong>1. Short-lived Access Tokens</strong></p>
+
+      <p>Access tokens expire quickly, usually within 15 minutes.</p>
+
+      <p><strong>2. Long-lived Refresh Tokens</strong></p>
+
+      <p>Refresh tokens last longer, for example 7 days, and generate new access tokens.</p>
+
+      <p><strong>3. Store Refresh Tokens in Redis</strong></p>
+
+      <pre><code>userId → refreshToken</code></pre>
+
+      <p>This allows session revocation anytime.</p>
+
+      <p><strong>4. Logout Flow</strong></p>
+
+      <pre><code>DELETE refreshToken</code></pre>
+
+      <p>Now the user cannot generate new access tokens.</p>
+
+      <p><strong>5. httpOnly Cookies</strong></p>
+
+      <p>Refresh tokens are stored in httpOnly cookies so JavaScript cannot access them, preventing XSS theft.</p>
+
+      <p><strong>6. Optional Access Token Blacklisting</strong></p>
+
+      <p>Access tokens can also be blacklisted in Redis with TTL matching remaining expiry time for immediate logout.</p>
     </div>
   </div>
 
+  <!-- Question 6 -->
   <div class="qa">
     <div class="qa-q" onclick="toggleQA(this)">
       <span>❓ How do you build the "tickets per moderator this month" dashboard?</span>
       <span class="qa-toggle">▼</span>
     </div>
+
     <div class="qa-a">
-      <p>MongoDB Aggregation Pipeline: (1) <code>$match</code> — filter by <code>status: "DONE"</code> and date range (start of month to now). (2) <code>$group</code> — group by <code>assignedTo</code>, use <code>$sum: 1</code> to count. (3) <code>$lookup</code> — join with User collection to get moderator name and email. (4) <code>$sort</code> — sort by count descending. This runs in one DB query with no application-side processing and is much faster than multiple <code>find()</code> calls.</p>
+      <p>I use a MongoDB Aggregation Pipeline so all calculations happen directly inside the database.</p>
+
+      <p><strong>Step 1 — Match Relevant Tickets</strong></p>
+
+      <pre><code>$match</code></pre>
+
+      <ul>
+        <li>Status = DONE</li>
+        <li>Date within current month</li>
+      </ul>
+
+      <p><strong>Step 2 — Group by Moderator</strong></p>
+
+      <pre><code>$group</code></pre>
+
+      <pre><code>$sum: 1</code></pre>
+
+      <p>This counts tickets handled by each moderator.</p>
+
+      <p><strong>Step 3 — Join User Data</strong></p>
+
+      <pre><code>$lookup</code></pre>
+
+      <p>This joins moderator information like name and email.</p>
+
+      <p><strong>Step 4 — Sort Results</strong></p>
+
+      <pre><code>$sort</code></pre>
+
+      <p>Moderators are sorted by highest ticket count.</p>
+
+      <p>Everything runs inside one optimized DB query, which is faster and more scalable than multiple Node.js queries.</p>
     </div>
   </div>
 
+  <!-- Question 7 -->
   <div class="qa">
     <div class="qa-q" onclick="toggleQA(this)">
       <span>❓ How do you test an async background job without hitting real APIs?</span>
       <span class="qa-toggle">▼</span>
     </div>
+
     <div class="qa-a">
-      <p>Jest mocking. I mock the <code>analyzeWithGemini</code> function: <code>jest.mock('./analyzeWithGemini')</code>. Test 1: mock returns valid JSON → assert ticket status becomes "IN_PROGRESS", moderator is assigned, email is called once. Test 2: mock throws an error (simulates Gemini timeout) → assert ticket status becomes "AI_FAILED", email is NOT called, error is logged. Test 3: mock returns garbage text → assert JSON parsing fails gracefully. Never hit real Gemini in CI — it costs money, is slow, and returns non-deterministic results that break assertions.</p>
+      <p>I use <strong>Jest mocking</strong> to test async background jobs without calling the real Gemini API.</p>
+
+      <p>Normally the workflow is:</p>
+
+      <pre><code>Ticket Created
+      ↓
+Background Job Starts
+      ↓
+analyzeWithGemini()
+      ↓
+Parse AI Response
+      ↓
+Update Ticket
+      ↓
+Assign Moderator
+      ↓
+Send Email</code></pre>
+
+      <p>Calling the real Gemini API during testing is bad because:</p>
+
+      <ul>
+        <li>It costs money</li>
+        <li>It is slow</li>
+        <li>AI responses are non-deterministic</li>
+        <li>Tests become flaky</li>
+      </ul>
+
+      <p>So I mock the Gemini function:</p>
+
+      <pre><code>jest.mock('./analyzeWithGemini')</code></pre>
+
+      <p>This replaces the real Gemini API with a fake controllable version.</p>
+
+      <p><strong>Test 1 — Success Case</strong></p>
+
+      <pre><code>analyzeWithGemini.mockResolvedValue(
+  '{"priority":"HIGH"}'
+)</code></pre>
+
+      <p>Then I verify:</p>
+
+      <ul>
+        <li>Ticket status becomes <code>IN_PROGRESS</code></li>
+        <li>Moderator is assigned</li>
+        <li>Email is sent once</li>
+      </ul>
+
+      <p><strong>Test 2 — Failure Case</strong></p>
+
+      <pre><code>mockRejectedValue(
+  new Error('Timeout')
+)</code></pre>
+
+      <p>Then I verify:</p>
+
+      <ul>
+        <li>Ticket status becomes <code>AI_FAILED</code></li>
+        <li>Email is NOT sent</li>
+        <li>Error logging works correctly</li>
+      </ul>
+
+      <p><strong>Test 3 — Invalid AI Output</strong></p>
+
+      <pre><code>'random invalid text'</code></pre>
+
+      <p>This checks whether JSON parsing failures are handled safely without crashing the backend.</p>
+
+      <p>The key idea is that I am not testing Gemini itself. I am testing how my backend behaves when Gemini succeeds, fails, or returns malformed data.</p>
     </div>
   </div>
 
 </div>
-
 </main>
 
 <script>
