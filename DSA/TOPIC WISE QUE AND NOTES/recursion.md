@@ -1,3 +1,1130 @@
+# DSA Basics Master Notes
+
+# 1. What is Recursion?
+
+## Definition
+
+A function calling itself.
+
+```cpp
+void fun(){
+    fun();
+}
+```
+
+But recursion must always have:
+
+* base case
+* smaller subproblem
+
+Otherwise infinite recursion occurs.
+
+---
+
+# 2. Structure of Recursion
+
+```cpp
+returnType func(parameters){
+
+    // base case
+
+    // work
+
+    // recursive call
+}
+```
+
+---
+
+# 3. Base Case
+
+Stops recursion.
+
+Example:
+
+```cpp
+if(n==0)
+    return 1;
+```
+
+Without base case:
+
+```text
+Stack Overflow
+```
+
+---
+
+# 4. Recursive Faith
+
+Most important concept.
+
+Assume:
+
+```text
+Smaller recursive call already works correctly.
+```
+
+Example:
+
+```text
+5! = 5 × 4!
+```
+
+You trust recursion to calculate:
+
+```text
+4!
+```
+
+---
+
+# 5. Call Stack
+
+Every recursive call gets:
+
+* its own memory
+* its own variables
+* its own execution state
+
+Stored in stack.
+
+Example:
+
+```text
+fun(3)
+fun(2)
+fun(1)
+fun(0)
+```
+
+Returns upward after base case.
+
+---
+
+# 6. Return Flow
+
+Recursive calls go DOWN.
+Returns come UP.
+
+Example:
+
+```cpp
+int fun(int n){
+
+    if(n==0)
+        return 0;
+
+    return n + fun(n-1);
+}
+```
+
+Flow:
+
+```text
+fun(3)
+= 3 + fun(2)
+
+fun(2)
+= 2 + fun(1)
+
+fun(1)
+= 1 + fun(0)
+
+fun(0)=0
+```
+
+Returns:
+
+```text
+fun(1)=1
+fun(2)=3
+fun(3)=6
+```
+
+---
+
+# 7. Types of Recursion
+
+## Linear Recursion
+
+One recursive call.
+
+Examples:
+
+* factorial
+* sum
+* reverse string
+
+---
+
+## Binary Recursion
+
+Two recursive calls.
+
+Examples:
+
+* fibonacci
+* subsets
+
+---
+
+## Backtracking
+
+```cpp
+choose
+recurse
+undo
+```
+
+Examples:
+
+* N Queens
+* Sudoku
+* permutations
+
+---
+
+# 8. Basic Linear Recursion Problems
+
+## Factorial
+
+```cpp
+int fact(int n){
+
+    if(n==0)
+        return 1;
+
+    return n * fact(n-1);
+}
+```
+
+---
+
+## Sum of N Numbers
+
+```cpp
+int sum(int n){
+
+    if(n==0)
+        return 0;
+
+    return n + sum(n-1);
+}
+```
+
+---
+
+## Fibonacci
+
+```cpp
+int fib(int n){
+
+    if(n<=1)
+        return n;
+
+    return fib(n-1) + fib(n-2);
+}
+```
+
+---
+
+## Reverse String
+
+```cpp
+void rev(string &s,int l,int r){
+
+    if(l>=r)
+        return;
+
+    swap(s[l],s[r]);
+
+    rev(s,l+1,r-1);
+}
+```
+
+---
+
+## Palindrome Check
+
+```cpp
+bool check(string s,int l,int r){
+
+    if(l>=r)
+        return true;
+
+    if(s[l]!=s[r])
+        return false;
+
+    return check(s,l+1,r-1);
+}
+```
+
+---
+
+# Recursion, Backtracking & DP Master Notes
+
+## 1. Binary Search using Recursion
+
+### Code
+
+```cpp
+class Solution {
+public:
+    int search(vector<int>& nums, int target) {
+        int st = 0;
+        int end = nums.size() - 1;
+        return ans(nums, target, st, end);
+    }
+
+    int ans(vector<int>& arr, int k, int st, int end) {
+        if(st <= end) {
+            int mid = st + (end - st) / 2;
+
+            if(arr[mid] == k)
+                return mid;
+
+            else if(arr[mid] > k)
+                return ans(arr, k, st, mid - 1);
+
+            else
+                return ans(arr, k, mid + 1, end);
+        }
+
+        return -1;
+    }
+};
+```
+
+## Important Concept
+
+### Correct
+
+```cpp
+return ans(...);
+```
+
+### Wrong
+
+```cpp
+ans(...);
+```
+
+Without `return`, recursive result is lost.
+
+---
+
+# 2. Subsets using Include/Exclude
+
+## Core Idea
+
+For every element:
+
+* Include
+* Exclude
+
+## Template
+
+```cpp
+void solve(i, state){
+
+    if(basecase){
+        process(state);
+        return;
+    }
+
+    // include
+    solve(i+1, updatedState);
+
+    // exclude
+    solve(i+1, state);
+}
+```
+
+## Code
+
+```cpp
+class Solution {
+public:
+
+    vector<vector<int>> ansfun(vector<int>& nums,
+                               vector<vector<int>>& ans,
+                               vector<int>& subans,
+                               int i) {
+
+        if(i == nums.size()) {
+            ans.push_back(subans);
+            return ans;
+        }
+
+        // include
+        subans.push_back(nums[i]);
+        ansfun(nums, ans, subans, i + 1);
+
+        // backtrack
+        subans.pop_back();
+
+        // exclude
+        ansfun(nums, ans, subans, i + 1);
+
+        return ans;
+    }
+
+    vector<vector<int>> subsets(vector<int>& nums) {
+
+        vector<vector<int>> ans;
+        vector<int> subans;
+
+        return ansfun(nums, ans, subans, 0);
+    }
+};
+```
+
+## Important Backtracking Pattern
+
+```cpp
+push
+recurse
+pop
+```
+
+---
+
+# 3. Recursion Return Flow
+
+## Most Important Understanding
+
+Recursive calls go DOWN.
+Returns come UP.
+
+Each recursive call returns to the exact line that called it.
+
+---
+
+# 4. Subsets II (Duplicates)
+
+## Important Idea
+
+Sort array first.
+Skip duplicates while excluding.
+
+## Duplicate Skip Logic
+
+```cpp
+while(idx < nums.size() && nums[idx] == nums[idx - 1])
+    idx++;
+```
+
+---
+
+# 5. First and Last Occurrence in Array
+
+## First Occurrence
+
+```cpp
+int firstocc(vector<int>& nums, int target, int st) {
+
+    if(st == nums.size())
+        return -1;
+
+    if(nums[st] == target)
+        return st;
+
+    return firstocc(nums, target, st + 1);
+}
+```
+
+## Last Occurrence
+
+```cpp
+int last(vector<int>& nums, int target, int st) {
+
+    if(st == nums.size())
+        return -1;
+
+    int idx = last(nums, target, st + 1);
+
+    if(idx == -1 && nums[st] == target)
+        return st;
+
+    return idx;
+}
+```
+
+## Key Difference
+
+* First occurrence solved while going DOWN.
+* Last occurrence solved while returning UP.
+
+---
+
+# 6. First Occurrence in String
+
+## Code
+
+```cpp
+class Solution {
+public:
+
+    int strStr(string haystack, string needle) {
+
+        return ans(haystack, needle, 0, needle.length());
+    }
+
+    int ans(string haystack,
+            string needle,
+            int st,
+            int n) {
+
+        if(st > haystack.length() - n)
+            return -1;
+
+        if(haystack.substr(st, n) == needle)
+            return st;
+
+        return ans(haystack, needle, st + 1, n);
+    }
+};
+```
+
+---
+
+# 7. Power Function using Fast Exponentiation
+
+## Core Formula
+
+If:
+
+```text
+n is even:
+x^n = (x^(n/2))²
+```
+
+If:
+
+```text
+n is odd:
+x^n = x × (x^(n/2))²
+```
+
+## Code
+
+```cpp
+class Solution {
+public:
+
+    double myPow(double x, int n) {
+
+        long long N = n;
+
+        if(N < 0) {
+            x = 1 / x;
+            N = -N;
+        }
+
+        return fastPow(x, N);
+    }
+
+    double fastPow(double x, long long n) {
+
+        if(n == 0)
+            return 1.0;
+
+        double half = fastPow(x, n / 2);
+        double halfsq = half * half;
+
+        if(n % 2 == 0)
+            return halfsq;
+
+        return x * halfsq;
+    }
+};
+```
+
+## Complexity
+
+* Time: O(log n)
+* Space: O(log n)
+
+---
+
+# 8. Tiling Problem
+
+## Problem
+
+Tile a 2×n board using 2×1 dominoes.
+
+## Thinking
+
+### Vertical Tile
+
+Leaves:
+
+```text
+2 × (n-1)
+```
+
+### Horizontal Tiles
+
+Leaves:
+
+```text
+2 × (n-2)
+```
+
+## Recurrence
+
+```text
+f(n) = f(n-1) + f(n-2)
+```
+
+## Recursive Code
+
+```cpp
+int tileWays(int n) {
+
+    if(n == 0 || n == 1)
+        return 1;
+
+    return tileWays(n - 1) + tileWays(n - 2);
+}
+```
+
+## Memoization
+
+```cpp
+int solve(int n, vector<int>& dp) {
+
+    if(n == 0 || n == 1)
+        return 1;
+
+    if(dp[n] != -1)
+        return dp[n];
+
+    return dp[n] = solve(n - 1, dp)
+                 + solve(n - 2, dp);
+}
+```
+
+## DP Tabulation
+
+```cpp
+for(int i = 2; i <= n; i++) {
+    dp[i] = dp[i-1] + dp[i-2];
+}
+```
+
+---
+
+# 9. Remove Duplicates from String
+
+## Core Idea
+
+Keep first occurrence only.
+Track visited characters.
+
+## Code
+
+```cpp
+class Solution {
+public:
+
+    string removeDuplicates(string &s) {
+
+        bool vis[256] = {false};
+
+        return ans(s, vis, 0);
+    }
+
+    string ans(string &s,
+               bool vis[],
+               int i) {
+
+        if(i == s.length())
+            return "";
+
+        char ch = s[i];
+
+        if(!vis[ch]) {
+
+            vis[ch] = true;
+
+            return ch + ans(s, vis, i + 1);
+        }
+
+        return ans(s, vis, i + 1);
+    }
+};
+```
+
+## Pattern
+
+```text
+new character → keep
+visited character → skip
+```
+
+---
+
+# 10. N-Queens
+
+## Problem
+
+Place N queens so no queens attack each other.
+
+## Rules
+
+* Unique row
+* Unique column
+* Unique diagonal
+
+## Backtracking Pattern
+
+```cpp
+place
+recurse
+remove
+```
+
+## Board Representation
+
+```cpp
+vector<string> board(n, string(n, '.'));
+```
+
+## Safe Checks
+
+### Column
+
+### Upper-left diagonal
+
+### Upper-right diagonal
+
+## Important Formula
+
+### 3×3 Box Style Thinking
+
+```cpp
+3*(row/3) + i/3
+3*(col/3) + i%3
+```
+
+---
+
+# 11. Unique Paths
+
+## Problem
+
+Move from top-left to bottom-right.
+Moves allowed:
+
+* Right
+* Down
+
+## Recursive Formula
+
+```cpp
+return dfs(row+1,col)
+     + dfs(row,col+1);
+```
+
+## Base Cases
+
+```cpp
+if(row == m-1 && col == n-1)
+    return 1;
+
+if(row >= m || col >= n)
+    return 0;
+```
+
+## Memoization
+
+```cpp
+if(dp[row][col] != -1)
+    return dp[row][col];
+```
+
+## Complexity
+
+* Without DP: Exponential
+* With DP: O(m × n)
+
+---
+
+# 12. Sudoku Solver
+
+## Core Idea
+
+Find empty cell.
+Try digits 1–9.
+If valid:
+
+* place
+* recurse
+* backtrack
+
+## Backtracking Pattern
+
+```cpp
+try
+recurse
+undo
+```
+
+## Sudoku Checks
+
+* Row
+* Column
+* 3×3 Box
+
+---
+
+# 13. Recursion Patterns Summary
+
+## Linear Recursion
+
+One recursive call.
+
+Examples:
+
+* factorial
+* sum
+* reverse string
+
+---
+
+## Binary Recursion
+
+Two recursive calls.
+
+Examples:
+
+* fibonacci
+* subsets
+
+---
+
+## Backtracking
+
+```cpp
+choose
+recurse
+undo
+```
+
+Examples:
+
+* N Queens
+* Sudoku
+* permutations
+
+---
+
+# 14. Include/Exclude Pattern
+
+## Generic Template
+
+```cpp
+solve(i, state){
+
+    if(basecase){
+        process(state);
+        return;
+    }
+
+    // include
+    solve(i+1, updatedState);
+
+    // exclude
+    solve(i+1, state);
+}
+```
+
+## Used In
+
+* subsets
+* subsequences
+* subset sum
+* target sum
+
+---
+
+# 15. Subsequence Generation
+
+## Code
+
+```cpp
+void solve(string s,
+           string temp,
+           int i){
+
+    if(i == s.length()){
+        cout << temp << endl;
+        return;
+    }
+
+    // include
+    solve(s, temp + s[i], i+1);
+
+    // exclude
+    solve(s, temp, i+1);
+}
+```
+
+---
+
+# 16. Subset Sum
+
+## Core Idea
+
+Carry current sum instead of full subset.
+
+## Code
+
+```cpp
+void solve(vector<int>& nums,
+           int i,
+           int sum){
+
+    if(i == nums.size()){
+        cout << sum << endl;
+        return;
+    }
+
+    // include
+    solve(nums,
+          i+1,
+          sum + nums[i]);
+
+    // exclude
+    solve(nums,
+          i+1,
+          sum);
+}
+```
+
+---
+
+# 17. Target Sum Exists
+
+## Boolean Recursion
+
+```cpp
+return include || exclude;
+```
+
+## Meaning
+
+If ANY path works:
+
+```text
+true
+```
+
+---
+
+# 18. Count Subsets with Given Sum
+
+## Counting Recursion
+
+```cpp
+return include + exclude;
+```
+
+## Meaning
+
+Total valid ways.
+
+---
+
+# 19. Combination Sum
+
+## Most Important Difference
+
+Elements reusable.
+
+## Important Recursive Call
+
+```cpp
+solve(nums,
+      i,
+      target - nums[i],
+      sub);
+```
+
+NOT:
+
+```cpp
+i+1
+```
+
+because reuse allowed.
+
+---
+
+# 20. Permutations
+
+## Core Idea
+
+Order matters.
+
+## Question
+
+```text
+Which unused element should I place next?
+```
+
+## Visited Array Pattern
+
+```cpp
+choose
+mark visited
+recurse
+undo
+```
+
+## Swap Technique
+
+```cpp
+swap
+recurse
+swap back
+```
+
+---
+
+# 21. Most Important Recursion Questions
+
+Whenever solving recursion ask:
+
+1. What changes?
+2. What are choices?
+3. What is base case?
+4. What should function return?
+5. Is overlapping happening?
+
+---
+
+# 22. Golden Observations
+
+## Printing Problems
+
+Use:
+
+```cpp
+void
+```
+
+## Existence Problems
+
+Use:
+
+```cpp
+bool
+```
+
+with:
+
+```cpp
+||
+```
+
+## Counting Problems
+
+Use:
+
+```cpp
+int
+```
+
+with:
+
+```cpp
++
+```
+
+---
+
+# 23. DP Understanding
+
+## Recursion
+
+Repeated subproblems.
+
+## DP
+
+Store answers.
+
+## Memoization
+
+```cpp
+if(dp[state] != -1)
+    return dp[state];
+```
+
+## Tabulation
+
+Bottom-up iterative solution.
+
+---
+
+# 24. Most Important Backtracking Template
+
+```cpp
+for(all choices){
+
+    if(invalid)
+        continue;
+
+    choose
+
+    recurse
+
+    undo
+}
+```
+
+Used in:
+
+* permutations
+* N Queens
+* Sudoku
+* maze problems
+
+---
+
+# 25. Strong Basic Practice List
+
+## Arrays
+
+* sum array
+* max element
+* sorted check
+* linear search
+
+## Strings
+
+* palindrome
+* reverse string
+* remove duplicates
+* subsequences
+
+## Include/Exclude
+
+* subsets
+* subset sum
+* target exists
+* count subsets
+
+## Basic DP
+
+* fibonacci
+* climbing stairs
+* tiling
+* unique paths
+
+
 class Solution {
 public:
     int search(vector<int>& nums, int target) {
@@ -2598,3 +3725,348 @@ $$
 
 ---
 
+
+
+
+
+
+
+Perfect — this is the exact recursion confusion most people face initially.
+
+You are asking:
+
+After excluding `1`, how did recursion generate:
+
+```text id="rbjlwm"
+Include 2 → Store 2
+Exclude 2 → Store 0
+```
+
+Let's go VERY slowly.
+
+---
+
+# Problem
+
+```text id="z7b9f1"
+nums = [1,2]
+```
+
+Code:
+
+```cpp id="mjlwmv"
+solve(nums, i, sum)
+```
+
+---
+
+# Function
+
+```cpp id="zvb9jd"
+void solve(vector<int>& nums,
+           int i,
+           int sum){
+
+    if(i == nums.size()){
+        cout << sum << endl;
+        return;
+    }
+
+    // include
+    solve(nums, i+1, sum + nums[i]);
+
+    // exclude
+    solve(nums, i+1, sum);
+}
+```
+
+---
+
+# Initial Call
+
+```text id="x9b9r2"
+solve(i=0, sum=0)
+```
+
+We are deciding about:
+
+```text id="o3bjlwm"
+nums[0] = 1
+```
+
+---
+
+# TREE VISUALIZATION
+
+```text id="st4b6w"
+                    (i=0,sum=0)
+                     /       \
+            include 1      exclude 1
+              /                \
+        (i=1,sum=1)       (i=1,sum=0)
+```
+
+---
+
+# LEFT SIDE FIRST
+
+---
+
+# Include 1
+
+Call:
+
+```text id="jlwmkh"
+solve(i=1,sum=1)
+```
+
+Now deciding about:
+
+```text id="q77qku"
+nums[1]=2
+```
+
+---
+
+## Include 2
+
+Call:
+
+```text id="7ljlwm"
+solve(i=2,sum=3)
+```
+
+Base case:
+
+```text id="76wljw"
+store 3
+```
+
+Return upward.
+
+---
+
+## Exclude 2
+
+Now recursion returns to:
+
+```text id="cwnjv6"
+solve(i=1,sum=1)
+```
+
+Then executes second call:
+
+```cpp id="xarjlwm"
+solve(i+1,sum)
+```
+
+Meaning:
+
+```text id="pd5w0q"
+solve(i=2,sum=1)
+```
+
+Base case:
+
+```text id="o2u6sl"
+store 1
+```
+
+LEFT SIDE DONE.
+
+---
+
+# NOW IMPORTANT PART
+
+Recursion returns ALL THE WAY BACK to:
+
+```text id="3q3h0u"
+solve(i=0,sum=0)
+```
+
+Now first include branch finished.
+
+So function continues to second call:
+
+```cpp id="qjlwmz"
+solve(i+1,sum)
+```
+
+Meaning:
+
+```text id="3hh8bl"
+solve(i=1,sum=0)
+```
+
+THIS is:
+
+```text id="aqnjlwm"
+exclude 1
+```
+
+---
+
+# IMPORTANT UNDERSTANDING
+
+We excluded `1`.
+
+So sum remains:
+
+```text id="vjlwm8"
+0
+```
+
+Now we are STILL deciding about `2`.
+
+---
+
+# Current State
+
+```text id="yjlwmn"
+i=1
+sum=0
+```
+
+Decision about:
+
+```text id="xwv0wv"
+nums[1]=2
+```
+
+---
+
+# Include 2
+
+Call:
+
+```text id="rjlwm9"
+solve(i=2,sum=2)
+```
+
+Base case:
+
+```text id="zhwwv0"
+store 2
+```
+
+---
+
+# Exclude 2
+
+Return to:
+
+```text id="jlwm52"
+solve(i=1,sum=0)
+```
+
+Now second branch executes:
+
+```text id="jlwmw9"
+solve(i=2,sum=0)
+```
+
+Base case:
+
+```text id="aqxjlwm"
+store 0
+```
+
+---
+
+# FINAL TREE
+
+```text id="khjjlwm"
+                    (0,0)
+                  /       \
+             include1    exclude1
+               /             \
+           (1,1)           (1,0)
+           /   \           /    \
+      inc2    exc2     inc2    exc2
+      (2,3)   (2,1)    (2,2)   (2,0)
+
+       3        1         2        0
+```
+
+---
+
+# MOST IMPORTANT REALIZATION
+
+Even after excluding `1`,
+we STILL must decide about `2`.
+
+Because recursion processes EVERY element.
+
+---
+
+# Mental Model
+
+At every index:
+
+```text id="buwjlwm"
+Should I take this element?
+```
+
+Every element gets:
+
+* YES branch
+* NO branch
+
+---
+
+# For [1,2]
+
+---
+
+## About 1
+
+```text id="jlwmpp"
+take 1
+skip 1
+```
+
+---
+
+## About 2
+
+For BOTH branches:
+
+```text id="jlwmn1"
+take 2
+skip 2
+```
+
+That creates:
+
+```text id="jlwmfd"
+2 × 2 = 4 subsets
+```
+
+---
+
+# Why Store 0?
+
+Path was:
+
+```text id="jlwmh7"
+skip 1
+skip 2
+```
+
+Subset becomes:
+
+```text id="jlwm0n"
+[]
+```
+
+Sum:
+
+```text id="jlwmog"
+0
+```
+
+---
+
+# Ultimate Understanding
+
+Recursion explores ALL POSSIBLE DECISION PATHS.
