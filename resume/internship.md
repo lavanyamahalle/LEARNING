@@ -1,6 +1,759 @@
-Here's the full story of your pickled data bug battle:
+# Ekalipi Technologies — Software Developer Internship
+### Apr 2025 – Jul 2025 | Complete Technical Document
 
 ---
+
+## The Goal
+Build and deploy a **Text-to-Speech (TTS) web app** using CDAC's ESPnet-based engine — supporting **17 Indian languages**, male and female voices, accessible via browser.
+
+---
+
+## Phase 1 — Getting the Engine Running + Building the Web App
+
+**Problem:** Python version mismatch. The CDAC TTS engine wouldn't run out of the box — no compatible environment existed.
+
+**Fix:** Manually cloned the CDAC engine, inspected all dependencies one by one, identified correct Python version, and resolved compatibility issues to get the engine running locally.
+
+### Why Flask?
+The CDAC engine was pure Python — a set of scripts centered around `inference.py`. It had no UI, no API, no way for a normal user to interact with it.
+
+Flask was the natural choice because:
+
+| Reason | Detail |
+|---|---|
+| **Python-native** | Flask is Python — plugs directly into inference.py with no glue code |
+| **Lightweight** | No heavy framework needed — just a form, a button, an API endpoint |
+| **Fast to build** | Single file `app.py` was enough to wrap the entire engine |
+| **Inference.py stays untouched** | Flask just calls it — CDAC's core logic is never modified |
+
+```python
+# app.py — the entire web layer in its simplest form
+from flask import Flask, request, send_file
+from inference import synthesize   # CDAC's core engine
+
+app = Flask(__name__)
+
+@app.route('/synthesis', methods=['POST'])
+def synthesis():
+    text = request.form['text']
+    lang = request.form['language']
+    gender = request.form['gender']
+    
+    audio_path = synthesize(text, lang, gender)  # calls inference.py
+    return send_file(audio_path)                 # returns audio to browser
+```
+
+Django would have been overkill. A simple script had no UI. Flask was exactly the right size.
+
+---
+
+## Phase 2 — Building the Web App + Deployment Journey
+
+### Web App Built
+- **Stack:** Flask + HTML
+- User selects: text, language, voice gender
+- API endpoint `/synthesis` → calls `inference.py` (core TTS pipeline by CDAC)
+
+### Deployment Journey
+
+| Option Tried | Problem |
+|---|---|
+| GoDaddy cPanel | Flask not supported |
+| Render (default) | Org uses Dropbox, not GitHub |
+| GitHub directly | Model files 143MB each — limit is 100MB |
+| Digital Ocean Droplets | Too expensive (S3 buckets) |
+| **Git LFS** | ✅ Final solution |
+
+### Git LFS — How It Works
+```
+GitHub Repo          LFS Server
+     |                    |
+  pointer.pth  -------> actual 143MB file
+  (few bytes)            stored here
+
+Render sees pointer → fetches real file from LFS server automatically
+```
+
+### Git LFS Commands Used
+```bash
+# Install and initialize LFS
+git lfs install
+
+# Track large model files only
+git lfs track "*.pth"          # 143MB model files - correct use of LFS
+
+# Commit the tracking config
+git add .gitattributes
+git add model.pth
+git commit -m "Add model via LFS"
+git push origin main
+```
+
+### Bandwidth Problem
+```bash
+# Mistake: tracked small files in LFS unnecessarily
+git lfs track "*.npz"          # only 770 bytes — wrong!
+git lfs track "*.yaml"         # only 5KB — wrong!
+
+# Correct: only track files that actually need LFS
+git lfs track "*.pth"          # 143MB — this makes sense ✅
+```
+
+---
+
+## Phase 3 — The Environmental Bugs
+
+### Bug 1: File Permission Error
+
+**Problem:** Model files, phone dict, and vocoder had read permissions locally but threw `Permission Denied` on Render's cloud.
+
+**Understanding chmod:**
+```
+chmod 644  →  rw- r-- r--   (owner: read+write, others: read only)
+chmod 744  →  rwx r-- r--   (owner: read+write+execute ✅)
+```
+
+**Commands used:**
+```bash
+# Check current permissions
+ls -la model.pth
+
+# Fix individual files
+chmod 744 model.pth
+chmod 744 phone_dict
+chmod 744 vocoder
+
+# Fix entire folder at once
+chmod -R 744 Fastspeech2_HS/
+```
+
+---
+
+### Bug 2: Hardcoded Absolute Paths → File Not Found
+
+**Problem:** `config.yaml` and `inference.py` paths were hardcoded — worked on local machine, broke on cloud.
+
+**Absolute vs Relative Path:**
+```
+Absolute Path (BROKEN on cloud):
+/home/yourname/ekalipi/Fastspeech2_HS/marathi/config.yaml
+^ starts from root — machine specific — doesn't exist on Render ❌
+
+Relative Path (WORKS everywhere):
+./Fastspeech2_HS/marathi/config.yaml
+^ starts from wherever the app runs — always correct ✅
+```
+
+**Fix in inference.py:**
+```python
+# BEFORE — broken on cloud
+config_path = "/home/yourname/ekalipi/config.yaml"
+
+# AFTER — works everywhere
+import os
+BASE_DIR = os.path.dirname(os.path.abspath(__file__))
+config_path = os.path.join(BASE_DIR, "config.yaml")
+# os.path.abspath(__file__) = location of THIS file
+# config.yaml sits next to inference.py — always found ✅
+```
+
+---
+
+### Bug 3: Pickle Data Error (The Trickiest One)
+
+**Problem:** The TTS engine needed three stats files:
+- `feats_stats.npz` — acoustic feature statistics
+- `energy_stats.npz` — energy/loudness statistics
+- `pitch_stats.npz` — pitch statistics
+
+These were saved using **Python pickling** (serializing Python objects to binary format). Modern NumPy enforces `allow_pickle=False` as a security rule. Render used modern NumPy — local machine had an older permissive version.
+
+```
+Before Fix:
+Local (old NumPy)  →  allow_pickle=True by default  →  ✅ works
+Render (new NumPy) →  allow_pickle=False by default  →  ❌ crash
+
+After Fix:
+Local (old NumPy)  →  plain numpy array  →  ✅ works
+Render (new NumPy) →  plain numpy array  →  ✅ works
+```
+
+**Fix — fix_stats.py:**
+```python
+import numpy as np
+
+files = ["feats_stats.npz", "energy_stats.npz", "pitch_stats.npz"]
+
+for f in files:
+    # Step 1: Load old pickled file — allow once
+    data = np.load(f, allow_pickle=True)
+
+    # Step 2: Re-save as plain numpy arrays — no pickling
+    np.savez(f.replace(".npz", "_fixed.npz"), **data)
+
+# Now safe to load anywhere:
+# np.load("feats_stats_fixed.npz", allow_pickle=False) ✅
+```
+
+---
+
+## Phase 4 — Docker for Environment Consistency
+
+**Why Docker?** Guarantees identical environment on local machine, cloud, and every team member's system — eliminating "works on my machine" forever.
+
+### Dockerfile (Annotated)
+```dockerfile
+FROM python:3.10
+# Start with Python 3.10 — fixes version mismatch from Phase 1
+
+RUN apt-get update && apt-get install -y git-lfs && git lfs install
+# Install git-lfs inside container
+
+WORKDIR /app
+# All commands run from /app — equivalent to cd /app
+
+COPY . .
+# Copy local project files into /app inside container
+# NOTE: .git folder is NOT copied
+
+RUN pip install --upgrade pip
+RUN pip install -r requirements.txt
+# Install all Python dependencies — same versions every time
+
+EXPOSE 8000
+# App runs on port 8000
+
+CMD ["gunicorn", "app:app", "--timeout", "120", "--workers", "1", "--threads", "4"]
+# Start Flask app using gunicorn (production server)
+```
+
+### The git lfs pull Problem Inside Docker
+```bash
+# What failed inside Dockerfile:
+RUN git lfs pull
+# Error: Not in a Git repository
+# .git folder was never copied by COPY . .
+
+# Fix — pull before building:
+git lfs pull          # run on local machine first
+                      # real model files now in working directory
+docker build .        # COPY . . picks up real files, not pointers ✅
+```
+
+### Final Fix — Untrack Small Files from LFS
+```bash
+# Root cause: tiny files were tracked in LFS for no reason
+# feats_stats.npz  →  1.37 KB
+# energy_stats.npz →  770 bytes
+# These should NEVER have been in LFS
+
+# Remove from LFS
+git lfs untrack "*.npz"
+git add .gitattributes
+
+# Force add as regular git files
+git add --force Fastspeech2_HS/marathi/male/model/feats_stats.npz
+git add --force Fastspeech2_HS/marathi/male/model/energy_stats.npz
+git add --force Fastspeech2_HS/marathi/male/model/pitch_stats.npz
+
+git commit -m "Remove npz files from LFS, store as regular files"
+git push origin main
+# COPY . . now always picks them up correctly ✅
+```
+
+### Verification
+```bash
+# Check file hash matches between local and cloud
+md5sum /app/Fastspeech2_HS/marathi/male/model/feats_stats.npz
+# → f419c74c5557c45fc00cf46c0ad819b4 ✅
+
+# Confirm numpy loads without pickling
+python3 -c "import numpy as np; np.load('feats_stats.npz', allow_pickle=False)"
+# Silence = success ✅
+
+# Final proof — TTS working
+# INFO - Audio saved to /app/static/audio/output_marathi_male_1750087517.wav ✅
+```
+
+---
+
+## Phase 5 — Cost Optimization via Model Preloading
+
+### The Problem
+Git LFS gives **1GB free bandwidth per month**. Every time Render deployed or restarted, it fetched all model files fresh from LFS:
+
+```
+17 languages × 2 genders × 143MB = ~4.8GB per full fetch
+                                     ^^^^
+                                     exceeds 1GB free tier instantly
+                                     $120/month in overage charges
+```
+
+### The Fix — Preloading Only Required Models
+Instead of fetching all 34 model files on every deploy, only the models needed for **active testing** were preloaded into the repo directly.
+
+**How preloading works:**
+```bash
+# Step 1: Pull only specific models locally (not all 34)
+git lfs pull --include="Fastspeech2_HS/marathi/male/model/*"
+git lfs pull --include="Fastspeech2_HS/hindi/female/model/*"
+# Only pull what you actually need for current testing
+
+# Step 2: Untrack from LFS — commit as regular files
+git lfs untrack "Fastspeech2_HS/marathi/male/model/*.pth"
+git add --force Fastspeech2_HS/marathi/male/model/model.pth
+git commit -m "Preload marathi male model as regular file"
+git push origin main
+```
+
+**What changes:**
+```
+Before Preloading:
+Render deploy → fetches ALL models from LFS → 4.8GB bandwidth → $120/month
+
+After Preloading:
+Render deploy → COPY . . picks up preloaded models directly → 0 LFS fetch → $0
+```
+
+**Why this works with Docker:**
+```dockerfile
+COPY . .
+# Since model files are now regular git files (not LFS pointers)
+# Docker copies them directly into the image
+# No LFS server contact needed at all ✅
+```
+
+### Result
+- **Saved $120/month** in LFS bandwidth overage
+- Faster deploys — no waiting for LFS downloads
+- Combined with untracking small .npz files — LFS bandwidth usage dropped to near zero
+
+---
+
+## Resume Bullets (Amazon-Ready)
+
+1. **Resolved Git LFS issues**, reducing infrastructure costs by **$120/month**, fixing path misconfigurations, and applying secure file permissions for smooth cloud integration.
+
+2. Resolved a critical **pickle data bug** causing incorrect data rendering across environments, ensuring data integrity and improving system reliability.
+
+3. **Refactored and validated over 1500 lines** of legacy code to standardize modal behavior and resolve UI/UX bugs, improving interface stability and user engagement.
+
+4. Established structured logging, monitoring, and streamlined deployments using **Docker** and **GitHub**, reducing manual intervention and simplifying troubleshooting through documentation.
+
+---
+
+## Amazon Leadership Principles Mapping
+
+| Phase | What You Did | LP |
+|---|---|---|
+| Phase 1 | Manually debugged version mismatch | Dive Deep |
+| Phase 2 | Found cheapest viable deployment path | Frugality |
+| Phase 3 | Hunted down 3 environmental bugs | Insist on Highest Standards |
+| Phase 4 | Dockerized for consistency | Ownership |
+| Phase 5 | Cut $120/month cloud cost | Frugality + Deliver Results |
+
+---
+
+## 3-Minute Interview Narrative
+
+> "At Ekalipi, my goal was to build and deploy a multilingual TTS web app using a CDAC engine. I started by resolving a Python version mismatch manually to get the engine running. Then I built a Flask web app and hit a major deployment challenge — model files were 143MB each, exceeding GitHub's limit. I set up Git LFS so GitHub stored only pointers while actual files lived on LFS servers, and Render fetched them automatically.
+>
+> Then came three environmental bugs. File permissions were blocking model access on cloud — fixed with chmod 744. Hardcoded absolute paths were breaking on Render — fixed by switching to relative paths using os.path. The trickiest was a pickle data error — stats files were saved with old NumPy pickling that modern cloud NumPy rejected for security. I loaded them once with allow_pickle=True, re-saved as plain arrays, and the version gap disappeared.
+>
+> To prevent all this permanently, I Dockerized the app with Python 3.10, which locked the environment across local, cloud, and team machines. I also discovered the root cause of the LFS issue — tiny 770-byte files were being tracked in LFS unnecessarily. Untracked them, committed as regular files, and the deployment became clean.
+>
+> End result: fully deployed multilingual TTS app, $120/month saved in cloud costs, and a stable pipeline the whole team could work with."
+
+
+
+
+The core TTS (Text-to-Speech) pipeline converts written text into natural human-like speech using multiple stages. In your project, the pipeline is based on **FastSpeech2 + HiFi-GAN + Flask Web Interface**.  
+
+---
+
+# Core TTS Pipeline Explained
+
+```text
+User Text
+   ↓
+Text Preprocessing
+   ↓
+Phoneme Conversion
+   ↓
+FastSpeech2 Acoustic Model
+   ↓
+Mel Spectrogram Generation
+   ↓
+HiFi-GAN Vocoder
+   ↓
+Waveform Audio (.wav)
+```
+
+---
+
+# 1. User Input Stage
+
+The user enters:
+
+* Text
+* Language
+* Gender
+* Speech speed (alpha)
+
+Example:
+
+```text
+Input: "नमस्कार"
+Language: Marathi
+Gender: Male
+Speed: 1.0
+```
+
+The frontend sends this data to Flask using a POST request. 
+
+---
+
+# 2. Backend Receives Request
+
+Inside `app.py`:
+
+```python
+@app.route('/synthesize', methods=['POST'])
+def synthesize():
+```
+
+Flask:
+
+* Validates input
+* Selects correct language model
+* Builds inference command
+* Calls `inference.py`
+
+Example:
+
+```python
+cmd = [
+    'python',
+    'inference.py',
+    '--sample_text', text,
+    '--language', language,
+    '--gender', gender
+]
+```
+
+This launches the actual speech synthesis engine. 
+
+---
+
+# 3. Text Preprocessing
+
+This is one of the most important stages.
+
+Raw text cannot directly go into AI models.
+
+So preprocessing performs:
+
+* Cleaning text
+* Removing unwanted symbols
+* Handling punctuation
+* Expanding numbers
+* Language normalization
+
+Example:
+
+```text
+"₹500" → "five hundred rupees"
+```
+
+Then the system converts words into **phonemes**.
+
+---
+
+# 4. Phoneme Conversion
+
+Humans speak sounds, not letters.
+
+So text becomes phonemes using language-specific phone dictionaries.
+
+Example:
+
+```text
+"Hello"
+→ HH AH L OW
+```
+
+For Marathi/Hindi:
+
+* Uses Indic phoneme mappings
+* Handles pronunciation rules
+
+Files used:
+
+```text
+Fastspeech2_HS/phone_dict/
+```
+
+This stage improves pronunciation accuracy. 
+
+---
+
+# 5. FastSpeech2 Acoustic Model
+
+Now the phoneme sequence enters the **FastSpeech2** model.
+
+FastSpeech2 predicts:
+
+* Duration
+* Pitch
+* Energy
+* Speech rhythm
+
+Then generates a:
+
+# → Mel Spectrogram
+
+A mel spectrogram is a visual representation of sound frequencies over time.
+
+Think of it as:
+
+```text
+Text → Sound Blueprint
+```
+
+Code:
+
+```python
+out = model(text, decode_conf={"alpha": alpha})
+```
+
+Where:
+
+* `alpha < 1` → Faster speech
+* `alpha > 1` → Slower speech
+
+FastSpeech2 is:
+
+* Non-autoregressive
+* Faster than Tacotron
+* Stable during inference
+
+
+
+---
+
+# 6. Mel Spectrogram Generation
+
+Output from FastSpeech2:
+
+```python
+out["feat_gen_denorm"]
+```
+
+This is NOT actual audio yet.
+
+It is:
+
+```text
+Frequency + Time + Energy information
+```
+
+Like this conceptually:
+
+```text
+Time →
+Freq ↓
+██████
+██░░██
+████░░
+```
+
+Machines understand this representation better than raw waveforms.
+
+---
+
+# 7. HiFi-GAN Vocoder
+
+Now comes the vocoder stage.
+
+The system uses:
+
+# HiFi-GAN
+
+Purpose:
+
+```text
+Mel Spectrogram → Real Audio Waveform
+```
+
+Code:
+
+```python
+y_g_hat = vocoder(x)
+```
+
+HiFi-GAN generates:
+
+* Natural voice
+* High-quality speech
+* Realistic tone
+* Fast inference
+
+This stage creates the final `.wav` audio.
+
+
+
+---
+
+# 8. Audio Postprocessing
+
+The generated waveform is:
+
+* Normalized
+* Converted to int16
+* Saved as WAV
+
+Code:
+
+```python
+audio = audio.cpu().numpy().astype('int16')
+```
+
+Output example:
+
+```text
+static/audio/output_marathi_male.wav
+```
+
+---
+
+# 9. Frontend Playback
+
+Flask returns:
+
+```json
+{
+  "status": "success",
+  "audio_path": "/static/audio/output.wav"
+}
+```
+
+Frontend updates:
+
+```javascript
+audioPlayer.src = data.audio_path;
+```
+
+Now the user hears synthesized speech.
+
+---
+
+# Full End-to-End Flow
+
+```text
+User Text
+   ↓
+Flask API
+   ↓
+Text Cleaning
+   ↓
+Phoneme Mapping
+   ↓
+FastSpeech2
+   ↓
+Mel Spectrogram
+   ↓
+HiFi-GAN
+   ↓
+Waveform Audio
+   ↓
+WAV File
+   ↓
+Browser Playback
+```
+
+---
+
+# Key Components in Your Project
+
+| Component           | Purpose               |
+| ------------------- | --------------------- |
+| Flask               | Backend API           |
+| FastSpeech2         | Acoustic Model        |
+| HiFi-GAN            | Vocoder               |
+| Phone Dictionary    | Pronunciation mapping |
+| React/HTML Frontend | User interaction      |
+| WAV Output          | Final speech          |
+
+---
+
+# Why FastSpeech2 is Important
+
+Advantages:
+
+* Faster inference
+* Better stability
+* Parallel generation
+* Natural prosody
+* Adjustable speed
+
+Compared to older Tacotron models:
+
+* Less alignment failure
+* More production-ready
+
+---
+
+# Core AI Concept
+
+The actual "speech generation" happens in two AI stages:
+
+## Stage 1 — Acoustic Modeling
+
+```text
+Text → Mel Spectrogram
+```
+
+Done by:
+
+# FastSpeech2
+
+---
+
+## Stage 2 — Vocoding
+
+```text
+Mel Spectrogram → Audio Waveform
+```
+
+Done by:
+
+# HiFi-GAN
+
+Together they create realistic speech.
+
+---
+
+# Simplified Analogy
+
+Imagine speech creation like music production:
+
+| Step               | Real World Analogy            |
+| ------------------ | ----------------------------- |
+| Text preprocessing | Writing lyrics                |
+| Phoneme conversion | Pronunciation guide           |
+| FastSpeech2        | Composer creating music notes |
+| Mel spectrogram    | Sheet music                   |
+| HiFi-GAN           | Singer performing audio       |
+| WAV file           | Final recording               |
+
+---
+
+# One-Line Summary
+
+Your TTS system works by converting text into phonemes, generating a mel spectrogram using FastSpeech2, and transforming that spectrogram into natural speech using the HiFi-GAN vocoder.  
+
+
+---------------------------------------------------------------
 
 # The Bug That Wouldn't Die
 ### A True Story from the Ekalipi TTS Internship
