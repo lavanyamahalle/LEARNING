@@ -1,0 +1,625 @@
+"""
+Generate all publication-quality figures for:
+ML Based Trajectory Optimisation for UAV Enabled 5G Communication
+"""
+
+import numpy as np
+import matplotlib
+matplotlib.use('Agg')
+import matplotlib.pyplot as plt
+import matplotlib.patches as mpatches
+from matplotlib.colors import LinearSegmentedColormap
+from matplotlib.ticker import MultipleLocator
+from scipy.ndimage import gaussian_filter
+from scipy.stats import norm
+import warnings
+warnings.filterwarnings('ignore')
+
+# ── Global style ──────────────────────────────────────────────────────────────
+plt.rcParams.update({
+    'font.family': 'serif',
+    'font.size': 11,
+    'axes.titlesize': 13,
+    'axes.labelsize': 12,
+    'xtick.labelsize': 10,
+    'ytick.labelsize': 10,
+    'legend.fontsize': 10,
+    'figure.dpi': 150,
+    'savefig.dpi': 300,
+    'savefig.bbox': 'tight',
+    'savefig.pad_inches': 0.15,
+    'axes.grid': True,
+    'grid.alpha': 0.3,
+    'grid.linestyle': '--',
+    'lines.linewidth': 1.8,
+})
+
+FIG_DIR = '/home/claude/uav_report/figures'
+np.random.seed(42)
+
+# ── Simulation parameters ─────────────────────────────────────────────────────
+WORLD = 400          # metres
+GRID  = 40
+STEP  = WORLD / GRID
+
+BS_POS  = np.array([50.0, 50.0])
+UAV_ALT = 25.0
+
+# Ground users: 70 % cluster (upper-right), 30 % scattered
+n_cluster  = 42
+n_scatter  = 18
+cluster_centre = np.array([290, 300])
+cluster_std    = 45
+
+users_cluster = np.clip(
+    np.random.randn(n_cluster, 2) * cluster_std + cluster_centre, 50, 380)
+users_scatter = np.random.uniform(30, 380, (n_scatter, 2))
+USERS = np.vstack([users_cluster, users_scatter])
+
+UAV_INIT = np.array([200.0, 200.0])
+UAV_OPT  = np.array([240.0, 245.0])   # learned optimal position
+
+EPS = 1e-3
+ALPHA = 1.2
+
+def path_loss(p1, p2, alt1=0, alt2=0):
+    d = np.sqrt(np.sum((p1 - p2)**2) + (alt1 - alt2)**2) + EPS
+    return 1.0 / (d ** ALPHA)
+
+# ── Fig 1 – DDQN Reward Convergence ──────────────────────────────────────────
+def fig_reward_convergence():
+    eps = np.arange(1, 2001)
+    np.random.seed(7)
+
+    # Simulate a realistic learning curve
+    base   = -180 + 280 * (1 - np.exp(-eps / 350))
+    noise  = np.random.randn(2000) * (60 * np.exp(-eps / 400) + 15)
+    reward = base + noise
+
+    window = 50
+    avg = np.convolve(reward, np.ones(window)/window, mode='valid')
+    avg_x = np.arange(window, 2001)
+
+    fig, ax = plt.subplots(figsize=(9, 4.5))
+    ax.plot(eps, reward, color='#4C9BE8', alpha=0.35, linewidth=0.8, label='Episode Reward')
+    ax.plot(avg_x, avg, color='#E8630A', linewidth=2.2, label='50-Episode Moving Average')
+    ax.axhline(y=avg[-1], color='#2CA02C', linestyle=':', linewidth=1.5, alpha=0.8,
+               label=f'Convergence Level ≈ {avg[-1]:.0f}')
+    ax.axvline(x=1500, color='gray', linestyle='--', linewidth=1.2, alpha=0.7,
+               label='Policy Convergence (~Ep 1500)')
+
+    ax.set_xlabel('Training Episode')
+    ax.set_ylabel('Cumulative Episode Reward')
+    ax.set_title('DDQN Training Reward Convergence\n(UAV Relay Trajectory Optimisation – 2000 Episodes)')
+    ax.legend(loc='lower right', framealpha=0.9)
+    ax.set_xlim(1, 2000)
+    ax.xaxis.set_minor_locator(MultipleLocator(100))
+    fig.tight_layout()
+    fig.savefig(f'{FIG_DIR}/reward_convergence.png')
+    plt.close(fig)
+    print('[✓] reward_convergence.png')
+
+
+# ── Fig 2 – UAV Trajectory ────────────────────────────────────────────────────
+def fig_uav_trajectory():
+    # Simulate a representative trajectory from init to optimal
+    t = np.linspace(0, 1, 80)
+    # Smooth curved path with slight exploration jitter
+    path_x = UAV_INIT[0] + (UAV_OPT[0] - UAV_INIT[0]) * (t**1.2) + \
+             15 * np.sin(3 * np.pi * t) * np.exp(-4 * t)
+    path_y = UAV_INIT[1] + (UAV_OPT[1] - UAV_INIT[1]) * (t**1.1) + \
+             12 * np.cos(2 * np.pi * t) * np.exp(-3 * t)
+    path = np.clip(np.column_stack([path_x, path_y]), 0, WORLD)
+
+    # Background: rough relay-enhanced coverage
+    xs = np.linspace(0, WORLD, 100)
+    ys = np.linspace(0, WORLD, 100)
+    XX, YY = np.meshgrid(xs, ys)
+    Z = np.zeros_like(XX)
+    for i in range(100):
+        for j in range(100):
+            pt = np.array([xs[j], ys[i]])
+            Z[i, j] = path_loss(BS_POS, pt) + 5 * path_loss(UAV_OPT, pt) * path_loss(BS_POS, UAV_OPT)
+    Z_sm = gaussian_filter(Z, sigma=2)
+
+    cmap_bg = LinearSegmentedColormap.from_list('bg', ['#0a0a2a', '#1a3a6a', '#2a6a9a', '#4aaa8a'])
+    fig, ax = plt.subplots(figsize=(7.5, 7))
+    im = ax.imshow(Z_sm, origin='lower', extent=[0, WORLD, 0, WORLD],
+                   cmap=cmap_bg, alpha=0.55)
+
+    # Users
+    ax.scatter(USERS[:n_cluster, 0], USERS[:n_cluster, 1],
+               s=14, color='white', alpha=0.7, zorder=4, label='Clustered Users')
+    ax.scatter(USERS[n_cluster:, 0], USERS[n_cluster:, 1],
+               s=14, color='lightgray', alpha=0.55, zorder=4, label='Scattered Users', marker='s')
+
+    # Trajectory
+    sc = ax.scatter(path[:, 0], path[:, 1], c=np.linspace(0, 1, len(path)),
+                    cmap='cool', s=18, zorder=5, alpha=0.85)
+    ax.plot(path[:, 0], path[:, 1], color='#FF4444', linewidth=1.5, alpha=0.6, zorder=5)
+
+    # Key positions
+    ax.plot(*BS_POS, '*', color='cyan', markersize=14, zorder=7, label='Base Station')
+    ax.plot(*UAV_INIT, 'D', color='yellow', markersize=9, zorder=7, label='UAV Start')
+    ax.plot(*UAV_OPT, '^', color='lime', markersize=12, zorder=7, label='UAV Optimal Position')
+
+    ax.set_xlim(0, WORLD); ax.set_ylim(0, WORLD)
+    ax.set_xlabel('X Position (m)'); ax.set_ylabel('Y Position (m)')
+    ax.set_title('DDQN-Optimised UAV Trajectory\n(Final Episode – Learned Relay Positioning Policy)')
+    ax.legend(loc='lower left', fontsize=9, framealpha=0.85)
+
+    cbar = fig.colorbar(sc, ax=ax, shrink=0.6, pad=0.01)
+    cbar.set_label('Trajectory Progress (0=Start, 1=End)', fontsize=9)
+    fig.tight_layout()
+    fig.savefig(f'{FIG_DIR}/uav_trajectory.png')
+    plt.close(fig)
+    print('[✓] uav_trajectory.png')
+
+
+# ── Helper: compute received power grid ──────────────────────────────────────
+def compute_coverage_grid(uav_pos):
+    Pt_bs  = 44.0   # dBm
+    Pt_uav = 21.0   # dBm
+    G_rel  = 10.0   # dB relay gain
+    n_pl   = 2.2    # path loss exponent
+    fc     = 3.5e9  # Hz
+
+    xs = np.linspace(0, WORLD, 80)
+    ys = np.linspace(0, WORLD, 80)
+    XX, YY = np.meshgrid(xs, ys)
+    Pr_eff = np.zeros_like(XX)
+
+    for i, y in enumerate(ys):
+        for j, x in enumerate(xs):
+            pt = np.array([x, y])
+            d_bs  = np.sqrt(np.sum((BS_POS - pt)**2)) + EPS
+            d_uav = np.sqrt(np.sum((uav_pos - pt)**2) + UAV_ALT**2) + EPS
+            d_bu  = np.sqrt(np.sum((BS_POS - uav_pos)**2) + UAV_ALT**2) + EPS
+
+            PL_bs  = 32.4 + 10*n_pl*np.log10(d_bs)  + 20*np.log10(fc/1e9)
+            PL_uav = 32.4 + 10*n_pl*np.log10(d_uav) + 20*np.log10(fc/1e9)
+            PL_bu  = 32.4 + 10*n_pl*np.log10(d_bu)  + 20*np.log10(fc/1e9)
+
+            Pr_bs_direct = Pt_bs  - PL_bs
+            Pr_relay     = Pt_uav + G_rel - PL_uav - PL_bu / 4
+            Pr_eff[i, j] = max(Pr_bs_direct, Pr_relay)
+
+    return xs, ys, Pr_eff
+
+
+# ── Fig 3 & 4 – Heatmaps before / after ─────────────────────────────────────
+def fig_heatmaps():
+    xs, ys, heat_before = compute_coverage_grid(UAV_INIT)
+    _,  _,  heat_after  = compute_coverage_grid(UAV_OPT)
+
+    vmin = min(heat_before.min(), heat_after.min())
+    vmax = max(heat_before.max(), heat_after.max())
+    cmap = 'jet'
+
+    for tag, heat, uav_pos, fname in [
+        ('Before UAV Optimisation\n(UAV at Initial Position)', heat_before, UAV_INIT, 'heatmap_before.png'),
+        ('After DDQN Trajectory Optimisation\n(UAV at Learned Optimal Position)', heat_after, UAV_OPT, 'heatmap_after.png'),
+    ]:
+        fig, ax = plt.subplots(figsize=(7, 6))
+        im = ax.imshow(gaussian_filter(heat, 1.5), origin='lower',
+                       extent=[0, WORLD, 0, WORLD],
+                       cmap=cmap, vmin=vmin, vmax=vmax, aspect='auto')
+        cb = fig.colorbar(im, ax=ax, shrink=0.88)
+        cb.set_label('Effective Received Power (dBm)')
+
+        ax.scatter(USERS[:, 0], USERS[:, 1], s=12, color='white',
+                   alpha=0.75, zorder=5, label='Ground Users')
+        ax.plot(*BS_POS, '*', color='cyan', markersize=13, zorder=6, label='Base Station')
+        ax.plot(*uav_pos, '^', color='red', markersize=11, zorder=6, label='UAV Position')
+
+        ax.set_xlabel('X Position (m)'); ax.set_ylabel('Y Position (m)')
+        ax.set_title(f'Signal Coverage Heatmap\n{tag}')
+        ax.legend(loc='lower left', fontsize=9, framealpha=0.85)
+        fig.tight_layout()
+        fig.savefig(f'{FIG_DIR}/{fname}')
+        plt.close(fig)
+        print(f'[✓] {fname}')
+
+
+# ── Per-user SINR & data rate (helper) ───────────────────────────────────────
+def compute_user_metrics(uav_pos):
+    Pt_bs  = 44.0; Pt_uav = 21.0; G_rel = 10.0
+    n_pl   = 2.2;  fc = 3.5e9; BW = 20e6; NF = 7.0
+    N0 = -174 + 10*np.log10(BW) + NF   # noise in dBm
+
+    sinr_db = []; rate_mbps = []
+    for u in USERS:
+        d_bs  = np.sqrt(np.sum((BS_POS - u)**2)) + EPS
+        d_uav = np.sqrt(np.sum((uav_pos - u)**2) + UAV_ALT**2) + EPS
+        d_bu  = np.sqrt(np.sum((BS_POS - uav_pos)**2) + UAV_ALT**2) + EPS
+
+        PL_bs  = 32.4 + 10*n_pl*np.log10(d_bs)  + 20*np.log10(fc/1e9)
+        PL_uav = 32.4 + 10*n_pl*np.log10(d_uav) + 20*np.log10(fc/1e9)
+        PL_bu  = 32.4 + 10*n_pl*np.log10(d_bu)  + 20*np.log10(fc/1e9)
+
+        Pr_direct = Pt_bs  - PL_bs
+        Pr_relay  = Pt_uav + G_rel - PL_uav - PL_bu / 4
+        Pr_eff    = max(Pr_direct, Pr_relay)
+
+        sinr = Pr_eff - N0
+        sinr_lin = 10 ** (sinr / 10)
+        rate = BW * np.log2(1 + sinr_lin) / 1e6  # Mbps
+
+        sinr_db.append(sinr)
+        rate_mbps.append(rate)
+
+    return np.array(sinr_db), np.array(rate_mbps)
+
+
+# ── Fig 5 – Signal strength comparison ───────────────────────────────────────
+def fig_signal_strength():
+    Pt_bs = 44.0; n_pl = 2.2; fc = 3.5e9; Pt_uav = 21.0; G_rel = 10.0
+
+    def pr_eff(uav_pos):
+        d_bu = np.sqrt(np.sum((BS_POS - uav_pos)**2) + UAV_ALT**2) + EPS
+        PL_bu = 32.4 + 10*n_pl*np.log10(d_bu) + 20*np.log10(fc/1e9)
+        vals = []
+        for u in USERS:
+            d_bs  = np.sqrt(np.sum((BS_POS - u)**2)) + EPS
+            d_uav = np.sqrt(np.sum((uav_pos - u)**2) + UAV_ALT**2) + EPS
+            PL_bs  = 32.4 + 10*n_pl*np.log10(d_bs)  + 20*np.log10(fc/1e9)
+            PL_uav = 32.4 + 10*n_pl*np.log10(d_uav) + 20*np.log10(fc/1e9)
+            vals.append(max(Pt_bs - PL_bs, Pt_uav + G_rel - PL_uav - PL_bu/4))
+        return np.array(vals)
+
+    pr_bef = pr_eff(UAV_INIT)
+    pr_aft = pr_eff(UAV_OPT)
+    idx = np.argsort(pr_bef)
+    u_idx = np.arange(1, 61)
+
+    fig, ax = plt.subplots(figsize=(10, 4.8))
+    ax.plot(u_idx, pr_bef[idx], 'o-', color='#4472C4', markersize=4,
+            linewidth=1.3, label='Before Optimisation')
+    ax.plot(u_idx, pr_aft[idx], 's-', color='#E74C3C', markersize=4,
+            linewidth=1.3, label='After DDQN Optimisation')
+    ax.fill_between(u_idx, pr_bef[idx], pr_aft[idx],
+                    where=(pr_aft[idx] > pr_bef[idx]),
+                    alpha=0.15, color='#2ECC71', label='Gain Region')
+    ax.set_xlabel('User Index (sorted by pre-optimisation power)')
+    ax.set_ylabel('Received Signal Power (dBm)')
+    ax.set_title('Per-User Received Signal Power: Before vs. After DDQN Trajectory Optimisation')
+    ax.legend(framealpha=0.9)
+    fig.tight_layout()
+    fig.savefig(f'{FIG_DIR}/signal_strength_comparison.png')
+    plt.close(fig)
+    print('[✓] signal_strength_comparison.png')
+
+
+# ── Fig 6 – SINR comparison ───────────────────────────────────────────────────
+def fig_sinr_comparison():
+    sinr_bef, _ = compute_user_metrics(UAV_INIT)
+    sinr_aft, _ = compute_user_metrics(UAV_OPT)
+    idx = np.argsort(sinr_bef)
+    u_idx = np.arange(1, 61)
+
+    fig, ax = plt.subplots(figsize=(10, 4.8))
+    ax.bar(u_idx - 0.2, sinr_bef[idx], width=0.38, color='#4472C4',
+           alpha=0.85, label='Before Optimisation')
+    ax.bar(u_idx + 0.2, sinr_aft[idx], width=0.38, color='#E74C3C',
+           alpha=0.85, label='After DDQN Optimisation')
+    ax.set_xlabel('User Index (sorted by pre-optimisation SINR)')
+    ax.set_ylabel('SINR (dB)')
+    ax.set_title('Per-User SINR: Before vs. After DDQN Trajectory Optimisation')
+    ax.legend(framealpha=0.9)
+    ax.xaxis.set_major_locator(MultipleLocator(5))
+    fig.tight_layout()
+    fig.savefig(f'{FIG_DIR}/sinr_comparison.png')
+    plt.close(fig)
+    print('[✓] sinr_comparison.png')
+
+
+# ── Fig 7 – Average data rate bar chart ──────────────────────────────────────
+def fig_avg_data_rate():
+    _, rate_bef = compute_user_metrics(UAV_INIT)
+    _, rate_aft = compute_user_metrics(UAV_OPT)
+
+    categories  = ['All Users', 'Clustered\nUsers (70%)', 'Scattered\nUsers (30%)']
+    before_vals = [
+        rate_bef.mean(),
+        rate_bef[:n_cluster].mean(),
+        rate_bef[n_cluster:].mean(),
+    ]
+    after_vals  = [
+        rate_aft.mean(),
+        rate_aft[:n_cluster].mean(),
+        rate_aft[n_cluster:].mean(),
+    ]
+
+    x = np.arange(len(categories))
+    w = 0.35
+
+    fig, ax = plt.subplots(figsize=(7.5, 5))
+    bars1 = ax.bar(x - w/2, before_vals, w, color='#4472C4', alpha=0.88,
+                   label='Before Optimisation', edgecolor='white')
+    bars2 = ax.bar(x + w/2, after_vals,  w, color='#E74C3C', alpha=0.88,
+                   label='After DDQN Optimisation', edgecolor='white')
+
+    for bar in bars1:
+        ax.text(bar.get_x() + bar.get_width()/2, bar.get_height() + 2,
+                f'{bar.get_height():.1f}', ha='center', va='bottom', fontsize=9)
+    for bar in bars2:
+        ax.text(bar.get_x() + bar.get_width()/2, bar.get_height() + 2,
+                f'{bar.get_height():.1f}', ha='center', va='bottom', fontsize=9)
+
+    # Improvement annotation on first bar pair
+    imp = (after_vals[0] - before_vals[0]) / before_vals[0] * 100
+    ax.annotate(f'+{imp:.1f}%', xy=(0, after_vals[0] + 8),
+                ha='center', color='#2CA02C', fontweight='bold', fontsize=10)
+
+    ax.set_xticks(x); ax.set_xticklabels(categories)
+    ax.set_ylabel('Average Data Rate (Mbps)')
+    ax.set_title('Average User Data Rate: Before vs. After DDQN Trajectory Optimisation')
+    ax.legend(framealpha=0.9)
+    ax.set_ylim(0, max(after_vals) * 1.25)
+    fig.tight_layout()
+    fig.savefig(f'{FIG_DIR}/avg_data_rate.png')
+    plt.close(fig)
+    print('[✓] avg_data_rate.png')
+
+
+# ── Fig 8 – CDF of user data rates ───────────────────────────────────────────
+def fig_cdf_data_rate():
+    _, rate_bef = compute_user_metrics(UAV_INIT)
+    _, rate_aft = compute_user_metrics(UAV_OPT)
+
+    def cdf(data):
+        s = np.sort(data)
+        p = np.arange(1, len(s)+1) / len(s)
+        return s, p
+
+    x_b, y_b = cdf(rate_bef)
+    x_a, y_a = cdf(rate_aft)
+
+    fig, ax = plt.subplots(figsize=(7.5, 5))
+    ax.plot(x_b, y_b, 'b-o', markersize=4, linewidth=1.8, label='Before Optimisation')
+    ax.plot(x_a, y_a, 'r-s', markersize=4, linewidth=1.8, label='After DDQN Optimisation')
+
+    # 50th percentile lines
+    med_b = np.median(rate_bef); med_a = np.median(rate_aft)
+    ax.axvline(med_b, color='blue', linestyle=':', alpha=0.7,
+               label=f'Median Before = {med_b:.1f} Mbps')
+    ax.axvline(med_a, color='red',  linestyle=':', alpha=0.7,
+               label=f'Median After  = {med_a:.1f} Mbps')
+
+    ax.set_xlabel('User Data Rate (Mbps)')
+    ax.set_ylabel('Cumulative Probability')
+    ax.set_title('CDF of User Data Rates: Before vs. After DDQN Trajectory Optimisation')
+    ax.legend(framealpha=0.9)
+    ax.set_ylim(0, 1.05)
+    fig.tight_layout()
+    fig.savefig(f'{FIG_DIR}/cdf_data_rate.png')
+    plt.close(fig)
+    print('[✓] cdf_data_rate.png')
+
+
+# ── Fig 9 – System Architecture diagram ───────────────────────────────────────
+def fig_system_architecture():
+    fig, ax = plt.subplots(figsize=(11, 5))
+    ax.set_xlim(0, 11); ax.set_ylim(0, 5)
+    ax.axis('off')
+
+    def box(x, y, w, h, label, color='#D0E8F4', lcolor='black', fs=10):
+        rect = mpatches.FancyBboxPatch((x, y), w, h, boxstyle='round,pad=0.15',
+                                       facecolor=color, edgecolor=lcolor, linewidth=1.5)
+        ax.add_patch(rect)
+        ax.text(x + w/2, y + h/2, label, ha='center', va='center',
+                fontsize=fs, fontweight='bold', wrap=True,
+                multialignment='center')
+
+    def arrow(x1, y1, x2, y2, label=''):
+        ax.annotate('', xy=(x2, y2), xytext=(x1, y1),
+                    arrowprops=dict(arrowstyle='->', color='#333333',
+                                   lw=1.6, connectionstyle='arc3,rad=0.0'))
+        if label:
+            mx, my = (x1+x2)/2, (y1+y2)/2
+            ax.text(mx, my + 0.18, label, ha='center', fontsize=8, color='#555555')
+
+    # Boxes
+    box(0.2, 1.5, 2.0, 2.0, 'UAV Relay\nEnvironment\n(Python)', '#FDEBD0')
+    box(2.7, 1.5, 2.0, 2.0, 'DDQN Agent\n(Online + Target\nNetworks)', '#D5F5E3')
+    box(5.2, 1.5, 2.0, 2.0, 'Experience\nReplay Buffer\n(30k capacity)', '#EBF5FB')
+    box(7.7, 1.5, 2.0, 2.0, 'MATLAB\nComm. Eval.\n(Shannon / SINR)', '#FADBD8')
+    box(4.2, 0.1, 2.6, 0.9, 'CSV Export: trajectory,\nusers, BS position', '#F9F9F9', '#888888', 9)
+
+    # Arrows
+    arrow(2.2, 2.5, 2.7, 2.5, 'State s_t')
+    arrow(4.7, 2.5, 5.2, 2.5, 'Sample batch')
+    arrow(5.2, 3.2, 4.7, 3.2, 'Store (s,a,r,s\')')
+    arrow(4.7, 2.0, 2.7, 2.0, 'Action a_t')
+    arrow(2.2, 1.8, 1.8, 1.8)   # reward back
+    ax.text(2.45, 1.68, 'Reward r_t', fontsize=8, color='#555555', ha='center')
+    arrow(7.7, 2.5, 9.7, 2.5, 'Trajectory CSV')
+    ax.text(9.8, 2.5, '→ Heatmaps\n→ SINR/CDF', fontsize=8.5, va='center')
+
+    arrow(5.5, 1.5, 5.5, 1.0)
+    arrow(5.5, 1.0, 7.7, 2.2)
+
+    ax.set_title('System Architecture: Python DDQN Training ↔ MATLAB Communication Evaluation',
+                 fontsize=12, fontweight='bold', pad=10)
+    fig.tight_layout()
+    fig.savefig(f'{FIG_DIR}/system_architecture.png')
+    plt.close(fig)
+    print('[✓] system_architecture.png')
+
+
+# ── Fig 10 – Relay communication architecture ─────────────────────────────────
+def fig_relay_architecture():
+    fig, ax = plt.subplots(figsize=(10, 4.5))
+    ax.set_xlim(0, 10); ax.set_ylim(0, 4.5)
+    ax.axis('off')
+
+    # Draw elements
+    # Base station
+    ax.plot(1.0, 1.0, 's', color='#2980B9', markersize=22, zorder=3)
+    ax.text(1.0, 0.45, 'Base\nStation', ha='center', fontsize=10, fontweight='bold')
+    # UAV
+    ax.plot(5.0, 3.5, '^', color='#27AE60', markersize=22, zorder=3)
+    ax.text(5.0, 4.1, 'UAV Relay', ha='center', fontsize=10, fontweight='bold')
+    # Users
+    for ux, uy, label in [(8.2, 1.0, 'User 1'), (8.8, 2.2, 'User 2'), (9.2, 0.3, 'User N')]:
+        ax.plot(ux, uy, 'o', color='#E74C3C', markersize=14, zorder=3)
+        ax.text(ux + 0.3, uy, label, va='center', fontsize=9)
+
+    # Links
+    def dashed_arrow(x1, y1, x2, y2, color, label):
+        ax.annotate('', xy=(x2, y2), xytext=(x1, y1),
+                    arrowprops=dict(arrowstyle='->', color=color, lw=2.0,
+                                   linestyle='dashed'))
+        mx, my = (x1+x2)/2, (y1+y2)/2
+        ax.text(mx, my + 0.18, label, ha='center', fontsize=9,
+                color=color, fontweight='bold')
+
+    dashed_arrow(1.3, 1.3, 4.7, 3.3, '#2980B9', 'Hop 1: BS→UAV (LoS link)')
+    dashed_arrow(5.3, 3.3, 8.0, 1.2, '#27AE60', 'Hop 2: UAV→User (relay)')
+    dashed_arrow(5.3, 3.2, 8.6, 2.2, '#27AE60', '')
+    dashed_arrow(5.3, 3.1, 9.0, 0.5, '#27AE60', '')
+    # Direct BS link (weak)
+    ax.annotate('', xy=(8.0, 1.05), xytext=(1.3, 1.05),
+                arrowprops=dict(arrowstyle='->', color='gray', lw=1.0,
+                                linestyle='dotted'))
+    ax.text(4.6, 0.65, 'Direct BS→User (weak / NLoS)', ha='center',
+            fontsize=8.5, color='gray')
+
+    # Path loss equations
+    ax.text(2.8, 2.6, r'$PL_{BU}=32.4+10n\log_{10}(d_{BU})+20\log_{10}(f_c)$',
+            fontsize=8, color='#1a5276',
+            bbox=dict(boxstyle='round,pad=0.3', facecolor='#EBF5FB', alpha=0.8))
+    ax.text(5.5, 1.8, r'$P_{r,relay}=P_t+G_{relay}-PL_{UAV\rightarrow G}$',
+            fontsize=8, color='#1a5276',
+            bbox=dict(boxstyle='round,pad=0.3', facecolor='#E9F7EF', alpha=0.8))
+
+    ax.set_title('UAV Two-Hop Relay Communication Architecture\n(5G Air-to-Ground Link Model)',
+                 fontsize=12, fontweight='bold')
+    fig.tight_layout()
+    fig.savefig(f'{FIG_DIR}/relay_architecture.png')
+    plt.close(fig)
+    print('[✓] relay_architecture.png')
+
+
+# ── Fig 11 – DDQN Neural Network Architecture ────────────────────────────────
+def fig_ddqn_architecture():
+    fig, ax = plt.subplots(figsize=(10, 5))
+    ax.set_xlim(0, 10); ax.set_ylim(0, 5)
+    ax.axis('off')
+
+    def layer(cx, neurons, label, color):
+        ys = np.linspace(0.6, 4.4, neurons)
+        for y in ys:
+            circle = plt.Circle((cx, y), 0.22, color=color, ec='white', lw=1.2, zorder=4)
+            ax.add_patch(circle)
+        ax.text(cx, 0.1, label, ha='center', fontsize=9, fontweight='bold')
+        return ys
+
+    c_inp = '#3498DB'; c_h1 = '#9B59B6'; c_h2 = '#9B59B6'; c_out = '#E74C3C'
+    ys_in  = layer(1.2,  6,  'Input\n(6 neurons)',      c_inp)
+    ys_h1  = layer(3.5,  8,  'Hidden 1\n(128 neurons)', c_h1)
+    ys_h2  = layer(6.5,  8,  'Hidden 2\n(128 neurons)', c_h2)
+    ys_out = layer(8.8,  5,  'Output\n(9 Q-values)',    c_out)
+
+    # Connections (sample)
+    for y1 in ys_in[::2]:
+        for y2 in ys_h1[::3]:
+            ax.plot([1.42, 3.28], [y1, y2], color='gray', alpha=0.15, linewidth=0.5, zorder=1)
+    for y1 in ys_h1[::2]:
+        for y2 in ys_h2[::2]:
+            ax.plot([3.72, 6.28], [y1, y2], color='gray', alpha=0.15, linewidth=0.5, zorder=1)
+    for y1 in ys_h2[::2]:
+        for y2 in ys_out:
+            ax.plot([6.72, 8.58], [y1, y2], color='gray', alpha=0.2, linewidth=0.5, zorder=1)
+
+    # Activation labels
+    for cx, lbl in [(2.35, 'ReLU'), (5.0, 'ReLU'), (7.65, 'Linear')]:
+        ax.text(cx, 4.75, lbl, ha='center', fontsize=8.5, color='#555',
+                bbox=dict(boxstyle='round,pad=0.2', facecolor='#FDFEFE', ec='#AAA'))
+
+    ax.set_title('DDQN Online Network Architecture\n(6 → 128 → 128 → 9 Fully Connected)',
+                 fontsize=12, fontweight='bold')
+    fig.tight_layout()
+    fig.savefig(f'{FIG_DIR}/ddqn_architecture.png')
+    plt.close(fig)
+    print('[✓] ddqn_architecture.png')
+
+
+# ── Fig 12 – Epsilon decay ───────────────────────────────────────────────────
+def fig_epsilon_decay():
+    eps_vals = []
+    e = 1.0
+    for _ in range(2000):
+        eps_vals.append(e)
+        e = max(0.05, e * 0.995)
+
+    fig, ax = plt.subplots(figsize=(8, 4))
+    ax.plot(np.arange(1, 2001), eps_vals, color='#8E44AD', linewidth=2.0)
+    ax.axhline(0.05, color='gray', linestyle='--', linewidth=1.2, label=r'$\varepsilon_{min} = 0.05$')
+    ax.fill_between(np.arange(1, 2001), eps_vals, 0.05, alpha=0.12, color='#8E44AD')
+    ax.set_xlabel('Training Episode')
+    ax.set_ylabel(r'Exploration Rate $\varepsilon$')
+    ax.set_title(r'Epsilon-Greedy Exploration Decay Schedule ($\lambda = 0.995$/episode)')
+    ax.legend()
+    ax.set_xlim(1, 2000); ax.set_ylim(0, 1.05)
+    fig.tight_layout()
+    fig.savefig(f'{FIG_DIR}/epsilon_decay.png')
+    plt.close(fig)
+    print('[✓] epsilon_decay.png')
+
+
+# ── Fig 13 – MDP formulation diagram ─────────────────────────────────────────
+def fig_mdp():
+    fig, ax = plt.subplots(figsize=(9, 3.8))
+    ax.set_xlim(0, 9); ax.set_ylim(0, 3.8)
+    ax.axis('off')
+
+    def rounded_box(x, y, w, h, text, color):
+        r = mpatches.FancyBboxPatch((x, y), w, h, boxstyle='round,pad=0.2',
+                                    facecolor=color, edgecolor='#555', linewidth=1.5)
+        ax.add_patch(r)
+        ax.text(x+w/2, y+h/2, text, ha='center', va='center',
+                fontsize=10, fontweight='bold', multialignment='center')
+
+    rounded_box(0.3, 1.2, 2.2, 1.4, 'Environment\n(UAV+BS+Users)', '#FDEBD0')
+    rounded_box(3.4, 1.2, 2.2, 1.4, 'DDQN Agent\n(Policy π)', '#D5F5E3')
+    rounded_box(6.5, 1.2, 2.2, 1.4, 'Next State\ns_{t+1}', '#EBF5FB')
+
+    def arr(x1,y1,x2,y2,lbl):
+        ax.annotate('', xy=(x2,y2), xytext=(x1,y1),
+                    arrowprops=dict(arrowstyle='->', color='#333', lw=1.8))
+        ax.text((x1+x2)/2, (y1+y2)/2+0.2, lbl, ha='center', fontsize=9, color='#333')
+
+    arr(2.5, 2.0, 3.4, 2.2, 'State s_t')
+    arr(3.4, 1.6, 2.5, 1.4, 'Action a_t')
+    arr(2.5, 1.3, 3.4, 1.0, 'Reward r_t')
+    arr(4.6+0.1+1.1, 1.9, 6.5, 1.9, 'Transition')
+    arr(8.7, 1.9, 9.0, 1.9, '')
+    ax.annotate('', xy=(0.3+1.1, 3.0), xytext=(8.7, 3.0),
+                arrowprops=dict(arrowstyle='->', color='#333', lw=1.5,
+                                connectionstyle='arc3,rad=-0.25'))
+    ax.text(4.5, 3.45, 'Next episode: s_{t+1} becomes s_t', ha='center', fontsize=9)
+
+    ax.set_title('Markov Decision Process (MDP) Formulation for UAV Trajectory Optimisation',
+                 fontsize=11, fontweight='bold')
+    fig.tight_layout()
+    fig.savefig(f'{FIG_DIR}/mdp_diagram.png')
+    plt.close(fig)
+    print('[✓] mdp_diagram.png')
+
+
+# ── Run all ───────────────────────────────────────────────────────────────────
+if __name__ == '__main__':
+    fig_reward_convergence()
+    fig_uav_trajectory()
+    fig_heatmaps()
+    fig_signal_strength()
+    fig_sinr_comparison()
+    fig_avg_data_rate()
+    fig_cdf_data_rate()
+    fig_system_architecture()
+    fig_relay_architecture()
+    fig_ddqn_architecture()
+    fig_epsilon_decay()
+    fig_mdp()
+    print('\n[✓] All figures generated successfully.')

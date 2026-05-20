@@ -3085,3 +3085,104 @@ So:
 ---
 
 ⚡ Do you want me to draw a **memory diagram** (boxes for `t1`, `t2`, vptr → vtable → function) so you can *see* how it connects?
+
+
+Excellent question, Slavanya 👏
+
+Let’s understand this **clearly and deeply** — this is a common interview concept too.
+
+---
+
+## 🧩 `std::map` — Key Facts
+
+In C++,
+
+```cpp
+map<Key, Value> mp;
+```
+
+is an **ordered associative container**.
+
+That means:
+✅ The **data is automatically sorted by the *key*** (the first value in the pair).
+❌ It is **not sorted by the value**.
+
+---
+
+### 💡 Example 1 — Sorted by Key
+
+```cpp
+#include <bits/stdc++.h>
+using namespace std;
+
+int main() {
+    map<int, string> mp;
+    mp[3] = "banana";
+    mp[1] = "apple";
+    mp[2] = "cherry";
+
+    for (auto &it : mp) {
+        cout << it.first << " -> " << it.second << endl;
+    }
+}
+```
+
+### ✅ Output:
+
+```
+1 -> apple
+2 -> cherry
+3 -> banana
+```
+
+Even though you inserted `3, 1, 2`,
+the output is **sorted by the key** (ascending by default).
+
+---
+
+### 💡 Example 2 — If you want to sort by **value**
+
+You **cannot** do this automatically with `map`,
+because the `map` is **key-based sorted** internally.
+
+But you can use a **vector of pairs** or a **multimap** and sort manually:
+
+```cpp
+vector<pair<int, string>> v(mp.begin(), mp.end());
+sort(v.begin(), v.end(), [](auto &a, auto &b) {
+    return a.second < b.second; // sort by value
+});
+```
+
+---
+
+### 💡 Example 3 — To sort keys in descending order
+
+You can specify a comparator:
+
+```cpp
+map<int, string, greater<int>> mp;
+```
+
+Now the map will store keys in **descending order**.
+
+---
+
+### 🧠 Summary Table
+
+| Type                       | Sorted By    | Order     | Customizable?          |
+| -------------------------- | ------------ | --------- | ---------------------- |
+| `map<Key,Value>`           | Key          | Ascending | Yes (using comparator) |
+| `unordered_map<Key,Value>` | ❌ No sorting | Random    | No                     |
+| `multimap<Key,Value>`      | Key          | Ascending | Yes                    |
+
+---
+
+So, in short:
+
+> ✅ `std::map` always stores elements **sorted by the first (key)** value.
+> ❌ It never sorts by the second (value) automatically.
+
+---
+
+Would you like me to show how to **sort by value** using a `map` example next (with code)?

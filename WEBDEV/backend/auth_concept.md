@@ -1,7 +1,4 @@
-Here’s a simple yet technical explanation of:
-
----
-
+v
 ## 🔐 **Authentication vs Authorization**
 
 | Concept         | Authentication                   | Authorization                          |
